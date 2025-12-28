@@ -20,13 +20,14 @@ attachment::att_amend_desc()
 
 ## Add modules ----
 ## Create a module infrastructure in R/
-golem::add_module(name = "name_of_module1", with_test = TRUE) # Name of the module
+golem::add_module(name = "login_modal", with_test = TRUE) # Name of the module
 golem::add_module(name = "name_of_module2", with_test = TRUE) # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
 golem::add_fct("helpers", with_test = TRUE)
-golem::add_utils("helpers", with_test = TRUE)
+golem::add_utils("database", with_test = TRUE)
+golem::add_utils("constants", with_test = TRUE)
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
@@ -38,7 +39,14 @@ golem::add_any_file("file.json")
 
 ## Add internal datasets ----
 ## If you have data in your package
-usethis::use_data_raw(name = "my_dataset", open = FALSE)
+usethis::use_data_raw(name = "01_constants", open = FALSE)
+usethis::use_data_raw(name = "fty_base", open = FALSE)
+usethis::use_data_raw(name = "player_box_score", open = FALSE)
+# usethis::use_data_raw(name = "team_box_score", open = FALSE)
+# usethis::use_data_raw(name = "nba_schedule", open = FALSE)
+# usethis::use_data_raw(name = "team_roster", open = FALSE)
+# usethis::use_data_raw(name = "injuries", open = FALSE)
+usethis::use_data_raw(name = "season_segments", open = FALSE) ##
 
 ## Tests ----
 ## Add one line by test you want to create
@@ -55,7 +63,7 @@ devtools::build_vignettes()
 usethis::use_coverage()
 
 # Create a summary readme for the testthat subdirectory
-covrpage::covrpage()
+# covrpage::covrpage()
 
 ## CI ----
 ## Use this part of the script if you need to set up a CI

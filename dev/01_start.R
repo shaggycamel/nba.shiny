@@ -49,7 +49,6 @@ usethis::use_news_md(open = FALSE)
 
 ## Init Testing Infrastructure ----
 ## Create a template for tests
-# TODO:
 golem::use_recommended_tests()
 
 ## Favicon ----
@@ -67,8 +66,9 @@ usethis::use_git()
 # TODO:
 usethis::use_git_remote(
   name = "origin",
-  url = "https://github.com/<OWNER>/<REPO>.git"
+  url = "https://github.com/shaggycamel/nba.shiny.git"
 )
+
 
 # You're now set! ----
 

@@ -5,17 +5,20 @@ Authors@R:
     person("Oliver", "Eaton", , "eat_fred@proton.me", role = c("aut", "cre"))
 Description: A Shiny application for NBA Fantasy
 License: MIT + file LICENSE
+Depends: 
+    R (>= 3.5)
 Imports: 
     config,
+    DBI,
     golem,
-    shiny
+    RPostgres,
+    shiny,
+    tibble
 Suggests: 
     spelling,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Encoding: UTF-8
+Language: en-US
 LazyData: true
 RoxygenNote: 7.3.2
-Depends: 
-    R (>= 3.5)
-Language: en-US
