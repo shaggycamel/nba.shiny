@@ -21,7 +21,9 @@ attachment::att_amend_desc()
 ## Add modules ----
 ## Create a module infrastructure in R/
 golem::add_module(name = "login_modal", with_test = TRUE) # Name of the module
-golem::add_module(name = "name_of_module2", with_test = TRUE) # Name of the module
+golem::add_module(name = "league_overview", with_test = TRUE) # Name of the module
+golem::add_module(name = "h2h", with_test = TRUE) # Name of the module
+
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
@@ -40,8 +42,10 @@ golem::add_any_file("file.json")
 ## Add internal datasets ----
 ## If you have data in your package
 usethis::use_data_raw(name = "01_constants", open = FALSE)
-usethis::use_data_raw(name = "fty_base", open = FALSE)
-usethis::use_data_raw(name = "player_box_score", open = FALSE)
+usethis::use_data_raw(name = "02_nba_base", open = FALSE)
+usethis::use_data_raw(name = "03_fty_base", open = FALSE)
+usethis::use_data_raw(name = "league_overview", open = FALSE)
+usethis::use_data_raw(name = "h2h", open = FALSE)
 # usethis::use_data_raw(name = "team_box_score", open = FALSE)
 # usethis::use_data_raw(name = "nba_schedule", open = FALSE)
 # usethis::use_data_raw(name = "team_roster", open = FALSE)

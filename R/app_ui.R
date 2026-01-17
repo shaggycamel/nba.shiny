@@ -3,14 +3,31 @@
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
 #' @import shiny
+#' @importFrom bslib page_navbar nav_spacer nav_panel nav_menu nav_item bs_theme
 #' @noRd
 app_ui <- function(request) {
   tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # Your application UI logic
-    fluidPage(
-      golem::golem_welcome_page() # Remove this line to start building your UI
+    page_navbar(
+      id = "title_container",
+      window_title = "NBA Fantasy",
+      title = uiOutput("navbar_title"),
+      # put blank login page somewhere
+      nav_spacer(),
+      # nav_panel(NULL, mod_league_overview_ui("league_overview_1")),
+      nav_item(actionButton(
+        "fty_league_competitor_switch",
+        "League",
+        icon = icon("right-from-bracket"),
+        width = "150px"
+      )),
+      theme = bs_theme(
+        version = 5,
+        preset = "litera",
+        primary = "#133DEF"
+      )
     )
   )
 }
