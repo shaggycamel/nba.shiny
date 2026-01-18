@@ -23,5 +23,6 @@ files <- list.files(here("data-raw"), pattern = "^[^_]")
 # Generate Data ----------------------------------------------------------
 
 walk(files, \(file) {
+  cat(paste("\nExecuting:", file))
   source(here("data-raw", file))
 })

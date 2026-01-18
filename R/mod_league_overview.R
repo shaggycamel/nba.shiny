@@ -32,6 +32,11 @@ mod_league_overview_ui <- function(id) {
 #' league_overview Server Functions
 #'
 #' @noRd
+#'
+#' @importFrom dplyr filter
+#' @importFrom purrr pluck
+#' @importFrom stringr str_c
+#' @importFrom plotly renderPlotly
 mod_league_overview_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {
     # ns <- session$ns # probs delete
@@ -107,21 +112,16 @@ mod_league_overview_server <- function(id, carry_thru) {
         ) |>
         config(displayModeBar = FALSE)
 
-      # TO DO:
-      # Waiting on df_fty_schedule
-      # if (input$fty_lg_ov_just_h2h) {
-      #   plt <- {
-      #     c_id <-  ls_fty_name_to_cid[input$fty_competitor_select]
-      #     o_id <- df_fty_schedule |>
-      #       filter(competitor_id == c_id, matchup_period == cur_matchup) |>
-      #       pull(opponent_id)
+      if (input$fty_lg_ov_just_h2h) {
+        plt <- {
+          ts <- map_int(1:length(plt$x$data), \(x) {
+            unlist(pluck(ls_fty_lookup, "cp_name_to_id", as.character(carry_thru()$selected$league_id)))
+          })
+          ts_vis <- c(which(ts == carry_thru()$selected$competitor_id), which(ts == carry_thru()$selected$opponent_id))
 
-      #     ts <- map_int(1:length(plt$x$data), \(x) unlist(ls_fty_name_to_cid[pluck(plt$x$data, x, "name")]))
-      #     ts_vis <- c(which(ts == c_id), which(ts == o_id))
-
-      #     style(plt, visible = "legendonly", traces = setdiff(1:length(plt$x$data), ts_vis))
-      #   }
-      # }
+          style(plt, visible = "legendonly", traces = setdiff(1:length(plt$x$data), ts_vis))
+        }
+      }
       plt
     })
   })

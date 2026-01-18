@@ -10,12 +10,10 @@ df_fty_base <-
 
 # Fty categories ---------------------------------------------------------
 
-dfs_fty_cats <-
+df_fty_cats <-
   tbl(db_con(), I("fty.fty_categories_vw")) |>
   filter(season == cur_season | is.na(league_id)) |>
-  as_tibble() |>
-  nest_by(league_id) |>
-  deframe()
+  as_tibble()
 
 
 # Fty schedule -----------------------------------------------------------
@@ -64,7 +62,7 @@ ls_fty_lookup <- list(
 
 usethis::use_data(
   df_fty_base,
-  dfs_fty_cats,
+  df_fty_cats,
   dfs_fty_schedule,
   dfs_fty_roster,
   ls_fty_lookup,

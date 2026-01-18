@@ -22,7 +22,7 @@ df_fty_box_score <-
 
 cats <- unique(df_fty_cats$nba_category)
 
-df_league_overview <-
+dfs_league_overview <-
   df_fty_box_score |>
   left_join(
     df_fty_box_score |>
@@ -119,7 +119,7 @@ df_league_overview <-
 
 
 usethis::use_data(
-  df_league_overview,
+  dfs_league_overview,
   ls_lo_lg_cats,
   overwrite = TRUE
 )
