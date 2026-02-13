@@ -20,6 +20,14 @@ app_server <- function(input, output, session) {
   })
 
   #------- League Overview
-  # observe(mod_league_overview_server("league_overview_1", carry_thru)) |>
-  #   bindEvent(carry_thru()$fty_parameters_met())
+  observe(mod_league_overview_server("league_overview_1", carry_thru)) |>
+    bindEvent(carry_thru()$fty_parameters_met())
+
+  #------- H2H
+
+  #------- Schedule
+  observe(mod_schedule_table_server("schedule_table_1", carry_thru)) |>
+    bindEvent(carry_thru()$fty_parameters_met())
+
+  #------- Free Agents
 }

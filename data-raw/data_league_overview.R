@@ -1,9 +1,12 @@
+# League categories ------------------------------------------------------
+
 ls_lo_lg_cats <-
   map(set_names(unique(na.omit(df_fty_cats$league_id))), \(x) {
     list(
       "Overall" = c("All Categories" = "all_cat"),
       # Order categories appropiately
-      "Categories" = filter(df_fty_cats, h2h_cat, league_id == x) |>
+      "Categories" = df_fty_cats |>
+        filter(h2h_cat, league_id == x) |>
         select(fmt_category, nba_category) |>
         deframe(),
       "Z Scores" = c("Field Goal Z" = "fg_z", "Free Throw Z" = "ft_z")
@@ -11,46 +14,52 @@ ls_lo_lg_cats <-
   })
 
 
-# fga/m and fta/m aren't captured in the new data method.
-# How will overall % and Z_scores be calculated?
+# Fantasy Box Scores -----------------------------------------------------
+
 df_fty_box_score <-
   tbl(db_con(), I("fty.fty_matchup_box_score_vw")) |>
   filter(season == cur_season) |>
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
-  relocate(starts_with("competitor"), .before = matchup)
+  relocate(starts_with("competitor"), .before = matchup) |>
+  group_by(league_id, matchup) |>
+  calc_z_pcts() |>
+  ungroup() |>
+  as_tibble() |>
+  mutate(across(c(ends_with("_id"), matchup), \(x) as.integer(x)))
 
 
-cats <- unique(df_fty_cats$nba_category)
+# League overview dataframes ---------------------------------------------
 
 dfs_league_overview <-
   df_fty_box_score |>
   left_join(
     df_fty_box_score |>
-      mutate(across(any_of(cats), \(x) percent_rank(x)), .by = c(league_id, matchup)) |>
+      mutate(
+        across(any_of(discard(cats, \(x) str_detect(x, "_z|[t|g][m|a]"))), \(x) percent_rank(x)),
+        .by = c(league_id, matchup)
+      ) |>
       mutate(tov = 1 - tov) |> # Reverse turnover distribution | Eventually fix this in any hover boxes
-      pivot_longer(any_of(unique(df_fty_cats$nba_category)), names_to = "stat", values_to = "perc_rank") |>
+      pivot_longer(
+        any_of(discard(cats, \(x) str_detect(x, "_z|[t|g][m|a]"))),
+        names_to = "stat",
+        values_to = "perc_rank"
+      ) |>
       summarise(all_cat = sum(perc_rank, na.rm = TRUE), .by = c(league_id, competitor_id, matchup)),
     by = join_by(league_id, competitor_id, matchup)
   ) |>
-  # TO DO....
-  # group_by(league_id, matchup) |>
-  # calc_z_pcts() |>
-  # ungroup() |>
   mutate(
-    across(any_of(c(cats, "matchup")), \(x) lead(x, order_by = matchup), .names = "{.col}_lead"),
+    across(any_of(c(df_fty_cats$nba_category, "matchup")), \(x) lead(x, order_by = matchup), .names = "{.col}_lead"),
     .by = c(league_id, competitor_id)
   ) |>
   mutate(
-    across(any_of(discard(cats, \(x) x == "tov")), \(x) rank(x * -1), .names = "{.col}_rank"),
+    across(any_of(discard(df_fty_cats$nba_category, \(x) x == "tov")), \(x) rank(x * -1), .names = "{.col}_rank"),
     .by = c(league_id, matchup)
   ) |>
   mutate(tov_rank = rank(tov), .by = c(league_id, matchup)) |>
   mutate(
-    across(any_of(str_c(cats, "_rank")), \(x) lead(x, order_by = matchup), .names = "{.col}_lead"),
+    across(any_of(str_c(df_fty_cats$nba_category, "_rank")), \(x) lead(x, order_by = matchup), .names = "{.col}_lead"),
     .by = c(league_id, competitor_id)
   ) |>
-  as_tibble() |>
-  # Important step because numeric vals from dbplyr come as integer64, need to make double
   mutate(across(where(is.numeric), \(x) as.double(replace_na(x, 0)))) |>
   (\(df_tmp) {
     filter(df_tmp, matchup < max(matchup), .by = league_id) |>
@@ -61,7 +70,7 @@ dfs_league_overview <-
 
         # To handle when df is empty, ie - start of season
         if (nrow(df_t) > 0) {
-          for (stat in intersect(cats, colnames(df_t))) {
+          for (stat in intersect(df_fty_cats$nba_category, colnames(df_t))) {
             matchup_sigmoid <- x
             if (df_t[[stat]] > df_t[[str_c(stat, "_lead")]]) {
               matchup_sigmoid <- rev(matchup_sigmoid)
@@ -110,8 +119,7 @@ dfs_league_overview <-
   mutate(matchup_sigmoid = if_else(is.na(matchup_sigmoid), matchup, matchup_sigmoid)) |>
   left_join(
     df_fty_base |>
-      select(league_id, competitor_id, competitor_name) |>
-      mutate(across(where(is.numeric), \(x) as.double(x))),
+      select(league_id, competitor_id, competitor_name),
     by = join_by(league_id, competitor_id)
   ) |>
   nest_by(league_id) |>

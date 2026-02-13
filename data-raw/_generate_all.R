@@ -12,17 +12,18 @@ library(tidyr)
 library(forcats)
 library(lubridate)
 
-# database functions
+# functions
 source(here("R", "utils_database.R"))
+source(here("R", "fct_calc_z_pcts.R"))
 
 
 # generate data files
 files <- list.files(here("data-raw"), pattern = "^[^_]")
-
+files <- discard(files, \(x) str_like(x, "h2h.R"))
 
 # Generate Data ----------------------------------------------------------
 
 walk(files, \(file) {
-  cat(paste("\nExecuting:", file))
+  cat(paste("\nExecuting:", file, "\n"))
   source(here("data-raw", file))
 })

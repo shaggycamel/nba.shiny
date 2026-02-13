@@ -20,16 +20,17 @@ attachment::att_amend_desc()
 
 ## Add modules ----
 ## Create a module infrastructure in R/
-golem::add_module(name = "login_modal", with_test = TRUE) # Name of the module
-golem::add_module(name = "league_overview", with_test = TRUE) # Name of the module
-golem::add_module(name = "h2h", with_test = TRUE) # Name of the module
-
+golem::add_module(name = "login_modal", with_test = TRUE)
+golem::add_module(name = "league_overview", with_test = TRUE)
+golem::add_module(name = "h2h", with_test = TRUE)
+golem::add_module(name = "schedule_table", with_test = TRUE)
+golem::add_module(name = "player_comparison", with_test = TRUE)
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
-golem::add_fct("helpers", with_test = TRUE)
+golem::add_fct("calc_z_pcts", with_test = TRUE)
+golem::add_fct("reverse_plotly_legend_labels", with_test = TRUE)
 golem::add_utils("database", with_test = TRUE)
-golem::add_utils("constants", with_test = TRUE)
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
@@ -44,13 +45,10 @@ golem::add_any_file("file.json")
 usethis::use_data_raw(name = "01_constants", open = FALSE)
 usethis::use_data_raw(name = "02_nba_base", open = FALSE)
 usethis::use_data_raw(name = "03_fty_base", open = FALSE)
-usethis::use_data_raw(name = "league_overview", open = FALSE)
-usethis::use_data_raw(name = "h2h", open = FALSE)
-# usethis::use_data_raw(name = "team_box_score", open = FALSE)
-# usethis::use_data_raw(name = "nba_schedule", open = FALSE)
-# usethis::use_data_raw(name = "team_roster", open = FALSE)
-# usethis::use_data_raw(name = "injuries", open = FALSE)
-usethis::use_data_raw(name = "season_segments", open = FALSE) ##
+usethis::use_data_raw(name = "data_league_overview", open = FALSE)
+usethis::use_data_raw(name = "data_h2h", open = FALSE)
+usethis::use_data_raw(name = "data_schedule_table", open = FALSE)
+usethis::use_data_raw(name = "data_player_comparison", open = FALSE)
 
 ## Tests ----
 ## Add one line by test you want to create

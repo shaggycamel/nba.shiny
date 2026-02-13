@@ -16,7 +16,10 @@ app_ui <- function(request) {
       title = uiOutput("navbar_title"),
       # put blank login page somewhere
       nav_spacer(),
-      # nav_panel(NULL, mod_league_overview_ui("league_overview_1")),
+      nav_panel("Overview", mod_league_overview_ui("league_overview_1")),
+      # nav_panel("H2H", <X>),
+      nav_panel("Schedule", mod_schedule_table_ui("schedule_table_1")),
+      # nav_panel("Free Agents", <X>),
       nav_item(actionButton(
         "fty_league_competitor_switch",
         "League",

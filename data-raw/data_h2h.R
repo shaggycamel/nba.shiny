@@ -18,8 +18,8 @@
 #   overwrite = TRUE
 # )
 
-ct <- as.Date("2026-01-14")
-mup <- 13
+ct <- as.Date("2026-01-30")
+mup <- 15
 cid <- 25
 oid <- pluck(dfs_fty_schedule, "95537") |>
   filter(competitor_id == cid, matchup_period == mup) |>
@@ -41,6 +41,7 @@ df_past <- pluck(dfs_fty_roster, "95537") |>
       select(-c(matches("season|team"), player_name, game_id, espn_id, yahoo_id)),
     by = join_by(player_id, game_date)
   )
+
 
 view(df_past)
 

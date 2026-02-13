@@ -1,16 +1,19 @@
 # Player box score -------------------------------------------------------
 
 df_player_box_score <-
-  tbl(db_con(), I("nba.nba_player_box_score_vw")) |>
-  filter(season >= prev_season) |>
+  tbl(db_con(), I("nba.nba_player_box_score_vw_new")) |>
+  filter(season >= prev_season, !is.na(player_id)) |>
   as_tibble() |> # following mutate opeations need tibble
   mutate(
-    across(ends_with("_id"), \(x) as.double(x)),
-    game_date = force_tz(game_date, tz = "NZ"),
+    across(ends_with("_id"), \(x) as.integer(x)),
+    across(all_of(cats), \(x) as.double(x)),
     season = ordered(season),
     season_type = ordered(season_type, c("Pre Season", "Regular Season", "Playoffs")),
     year_season_type = fct_cross(season_type, str_sub(season, start = 6), sep = " ")
-  )
+  ) |>
+
+  # add distinct here just in case...ideally should fix duplicates in source
+  distinct()
 
 
 # NBA Schedule -----------------------------------------------------------
@@ -24,16 +27,18 @@ df_nba_schedule <-
   complete(game_date = seq.Date(min(game_date), max(game_date), by = "day")) |>
   select(game_date) |>
   left_join(
-    tbl(db_con(), I("nba.nba_schedule_vw")) |>
-      filter(season == cur_season) |>
+    tbl(db_con(), I("nba.nba_schedule_vw_new")) |>
+      filter(season == cur_season, season_type == 'Regular Season') |>
       as_tibble(),
     by = join_by(game_date)
   ) |>
   mutate(
+    across(ends_with("_id"), \(x) as.integer(x)),
     season = cur_season,
     season_type = "Regular Season",
-    # game_date = lubridate::force_tz(game_date, tz = "EST"), # THINK ERROR INDUCING
-    scheduled_to_play = ifelse(!is.na(game_id), 1, game_id) # used in h2h calculations
+    weekday = wday(game_date, label = TRUE, week_start = 1),
+    weekday_date = str_c(weekday, " ", format(game_date, "%m/%d")),
+    scheduled_to_play = ifelse(!is.na(game_id), 1L, game_id) # used in h2h calculations
   )
 
 
@@ -56,20 +61,19 @@ df_nba_season_segments <-
 
 # Team roster ------------------------------------------------------------
 
-df_nba_roster <- tbl(db_con(), I("nba.nba_latest_team_roster_vw")) |>
+df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw_new")) |>
   filter(season == cur_season) |>
-  as_tibble()
+  as_tibble() |>
+  mutate(across(ends_with("_id"), \(x) as.integer(x)))
 
 
 # Player rolling stats ---------------------------------------------------
 
-# Probs move somewhere else
-cats <- c("min", "fgm", "fga", "fg3_m", "ftm", "fta", "pts", "reb", "ast", "stl", "blk", "tov", "pf", "dd2", "td3")
-
 dfs_rolling_stats <- df_player_box_score |>
   arrange(game_date) |>
-  filter(game_date < cur_date) |>
-  select(-c(season, season_type, year_season_type, game_id)) |>
+  filter(game_date < cur_date, !is.na(player_id)) |>
+  mutate(across(all_of(cats), \(x) coalesce(x, 0))) |>
+  select(-year_season_type) |>
   (\(df_t) {
     map(set_names(c(7, 15, 30)), \(window) {
       df_t |>
@@ -86,21 +90,44 @@ dfs_rolling_stats <- df_player_box_score |>
     df_t |>
       bind_rows(
         df_nba_schedule |>
-          filter(game_date > (cur_date - days(1))) |>
+          filter(game_date > cur_date - days(1)) |>
           left_join(
-            select(df_nba_roster, player_id, espn_id, yahoo_id, player_name = player, team_slug),
-            by = join_by(team == team_slug),
+            df_nba_roster,
+            by = join_by(
+              season,
+              team == team_slug,
+              game_date >= entry_date,
+              game_date < exit_date
+            ),
             relationship = "many-to-many"
           ) |>
-          select(player_id, espn_id, yahoo_id, player_name, team_slug = team, game_date) |>
+          select(
+            player_id,
+            espn_id,
+            yahoo_id,
+            player_name,
+            team,
+            game_date,
+            opponent,
+            game_id,
+            season,
+            season_type,
+            home,
+            starts_with("inj_")
+          ) |>
           left_join(
             slice_max(df_t, order_by = game_date, by = player_id) |>
               select(player_id, min:last_col()),
             by = join_by(player_id),
             relationship = "many-to-many"
           )
-      )
+      ) |>
+      group_by(player_id) |>
+      arrange(game_date) |>
+      fill(inj_status, .direction = "down") |>
+      ungroup()
   })
+
 
 usethis::use_data(
   df_player_box_score,

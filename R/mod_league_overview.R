@@ -48,14 +48,14 @@ mod_league_overview_server <- function(id, carry_thru) {
       updateSelectInput(
         session = session,
         inputId = "fty_lg_ov_cat",
-        choices = pluck(ls_lov_lg_cats, as.character(carry_thru()$selected$league_id))
+        choices = pluck(ls_lo_lg_cats, as.character(carry_thru()$selected$league_id))
       )
     }) |>
       bindEvent(carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
 
     # Data prep --------------------------------------------------------------
 
-    df_lo <- reactive(pluck(df_league_overview, as.character(carry_thru()$selected$league_id)))
+    df_lo <- reactive(pluck(dfs_league_overview, as.character(carry_thru()$selected$league_id)))
     df_lo_pt <- reactive(filter(df_lo(), as.integer(matchup_sigmoid) == matchup_sigmoid))
 
     # Plot -------------------------------------------------------------------
@@ -113,14 +113,15 @@ mod_league_overview_server <- function(id, carry_thru) {
         config(displayModeBar = FALSE)
 
       if (input$fty_lg_ov_just_h2h) {
-        plt <- {
-          ts <- map_int(1:length(plt$x$data), \(x) {
-            unlist(pluck(ls_fty_lookup, "cp_name_to_id", as.character(carry_thru()$selected$league_id)))
-          })
-          ts_vis <- c(which(ts == carry_thru()$selected$competitor_id), which(ts == carry_thru()$selected$opponent_id))
+        just_h2h <- setdiff(
+          1:length(plt$x$data),
+          str_which(
+            map_chr(plt$x$data, \(x) x$name),
+            paste0(carry_thru()$selected$competitor_name, "|", carry_thru()$selected$opponent_name)
+          )
+        )
 
-          style(plt, visible = "legendonly", traces = setdiff(1:length(plt$x$data), ts_vis))
-        }
+        plt <- style(plt, visible = "legendonly", traces = just_h2h)
       }
       plt
     })
@@ -141,8 +142,8 @@ mod_league_overview_server <- function(id, carry_thru) {
 # library(purrr)
 # library(dplyr)
 # library(tidyr)
-# load("data/df_league_overview.rda")
-# load("data/ls_lov_lg_cats.rda")
+# load("data/dfs_league_overview.rda")
+# load("data/ls_lo_lg_cats.rda")
 
 # ui <- page_fluid(
 #   mod_league_overview_ui("league_overview_1")
@@ -151,7 +152,11 @@ mod_league_overview_server <- function(id, carry_thru) {
 # server <- function(input, output, session) {
 #   carry_thru <- reactiveVal(list(
 #     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(league_id = 95537)
+#     selected = reactiveValues(
+#       league_id = 95537,
+#       competitor_name = "britney_spears",
+#       opponent_name = "Only Franz"
+#     )
 #   ))
 
 #   mod_league_overview_server("league_overview_1", carry_thru)
