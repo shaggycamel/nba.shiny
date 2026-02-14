@@ -59,6 +59,17 @@ df_nba_season_segments <-
   mutate(mid_date = begin_date + (end_date - begin_date) / 2)
 
 
+# Teams ------------------------------------------------------------------
+
+ls_nba_teams <- tbl(db_con(), I("nba.nba_teams_vw")) |>
+  select(team_slug, team_id) |>
+  as_tibble() |>
+  mutate(team_id = as.integer(team_id)) |>
+  arrange(team_slug) |>
+  nest_by(team_slug, .key = "team_id") |>
+  mutate(team_id = team_id$team_id) |>
+  deframe()
+
 # Team roster ------------------------------------------------------------
 
 df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw_new")) |>
@@ -130,7 +141,8 @@ dfs_rolling_stats <- df_player_box_score |>
 
 
 usethis::use_data(
-  df_player_box_score,
+  # df_player_box_score, # don't think needed...
   dfs_rolling_stats,
+  ls_nba_teams,
   overwrite = TRUE
 )

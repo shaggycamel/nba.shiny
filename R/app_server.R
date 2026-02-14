@@ -29,5 +29,7 @@ app_server <- function(input, output, session) {
   observe(mod_schedule_table_server("schedule_table_1", carry_thru)) |>
     bindEvent(carry_thru()$fty_parameters_met())
 
-  #------- Free Agents
+  #------- Player Comparison
+  observe(mod_player_comparison_server("player_comparison_1", carry_thru)) |>
+    bindEvent(carry_thru()$fty_parameters_met())
 }

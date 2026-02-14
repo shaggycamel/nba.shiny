@@ -2,9 +2,11 @@
 
 dfs_player_comparison <- map(set_names(names(dfs_free_agents)), \(lg) {
   map(set_names(names(dfs_rolling_stats)), \(rl) {
-    dfs_rolling_stats[[rl]] |>
+    df_inr <- dfs_rolling_stats[[rl]] |>
       filter(season == cur_season) |>
-      slice_max(game_date, by = player_id) |>
+      slice_max(game_date, by = player_id)
+
+    df_inr |>
       mutate(
         across(min:blk, \(x) round(scales::rescale(x), 2)),
         across(pf:td3, \(x) round(scales::rescale(x), 2)),
@@ -39,10 +41,23 @@ dfs_player_comparison <- map(set_names(names(dfs_free_agents)), \(lg) {
       ) |>
       pivot_wider(names_from = performance, values_from = stat_value) |>
       left_join(
+        df_inr |>
+          select(player_id, any_of(unique(df_fty_cats$nba_category))),
+        by = join_by(player_id)
+      ) |>
+      calc_z_pcts() |>
+      left_join(
         dfs_free_agents[[lg]] |>
           select(player_id) |>
-          mutate(free_agent = TRUE)
-      )
+          mutate(free_agent = TRUE),
+        by = join_by(player_id)
+      ) |>
+      left_join(
+        tibble(team = names(ls_nba_teams), team_id = ls_nba_teams),
+        by = join_by(team)
+      ) |>
+      relocate(team_id, .before = team) |>
+      arrange(desc(min))
   })
 })
 
@@ -50,7 +65,8 @@ dfs_player_comparison <- map(set_names(names(dfs_free_agents)), \(lg) {
 # Nested injuries --------------------------------------------------------
 
 min_inj_date <- as.Date(cur_date - days(30))
-df_ns_injuries <- tbl(db_con(), I("nba.injuries")) |>
+df_ns_injuries <-
+  tbl(db_con(), I("nba.injuries")) |>
   filter(game_date >= min_inj_date, status == "Out") |>
   as_tibble() |>
   mutate(
@@ -62,7 +78,8 @@ df_ns_injuries <- tbl(db_con(), I("nba.injuries")) |>
   left_join(
     df_nba_roster |>
       select(nba_id = player_id, salary) |>
-      distinct()
+      distinct(),
+    by = join_by(nba_id)
   ) |>
   select(team = team_slug, opponent, game_date, player_name, salary) |>
   arrange(desc(game_date), desc(salary)) |>

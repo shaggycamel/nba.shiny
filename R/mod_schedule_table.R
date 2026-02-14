@@ -88,25 +88,25 @@ mod_schedule_table_server <- function(id, carry_thru) {
     }) |>
       bindEvent(input$matchup_selection, ignoreInit = TRUE)
 
-    # On copy_teams...
+    # On copy_teams...YET TO IMPLEMENT
     observe({
       req(carry_thru()$fty_parameters_met())
-      # DOESN'T WORK
-      # print(getReactableState("schedule_table", "selected"))
-      # selected_values <- dfs_fty_nba_mup_weeks |>
-      #   pluck(
-      #     as.character(carry_thru()$selected$league_id),
-      #     input$matchup_selection
-      #   ) |>
-      #   select(Team) |>
-      #   slice(getReactableState("schedule_table", "sortedData"))
-      # print(selected_values)
+
+      selected_values <- dfs_fty_nba_mup_weeks |>
+        pluck(
+          as.character(carry_thru()$selected$league_id),
+          input$matchup_selection
+        ) |>
+        select(Team) |>
+        slice(getReactableState("schedule_table", "selected"))
+      print(selected_values)
 
       # updateSwitchInput(session, "comparison_team_or_player", value = TRUE)
       # later::later(
       #   \() updateSelectInput(session, "comparison_team_or_player_filter", choices = teams, selected = tms),
       #   delay = 0.05
       # )
+
       show_toast(
         title = NULL,
         text = "Teams added to comparison...",
@@ -114,6 +114,8 @@ mod_schedule_table_server <- function(id, carry_thru) {
         type = "info",
         timer = 2000
       )
+
+      updateReactable("schedule_table", selected = integer(0))
     }) |>
       bindEvent(input$copy_teams, ignoreInit = TRUE)
 
@@ -168,7 +170,6 @@ mod_schedule_table_server <- function(id, carry_thru) {
         )
       )
 
-      # get Team row values on click
       reactable(
         df_tbl(),
         defaultColDef = colDef(
@@ -180,6 +181,7 @@ mod_schedule_table_server <- function(id, carry_thru) {
             borderBottom = "2px solid #005a91"
           )
         ),
+        selection = "multiple",
         filterable = TRUE,
         striped = TRUE,
         highlight = TRUE,

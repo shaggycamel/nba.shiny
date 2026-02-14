@@ -12,11 +12,19 @@ Imports:
     config,
     DBI,
     dplyr,
+    DT,
     golem,
+    lubridate,
+    plotly,
     purrr,
+    reactable,
+    rlang,
     RPostgres,
     shiny,
-    tibble
+    shinyWidgets,
+    stringr,
+    tibble,
+    tidyr
 Suggests: 
     spelling,
     testthat (>= 3.0.0)

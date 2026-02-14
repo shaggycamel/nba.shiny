@@ -19,7 +19,7 @@ source(here("R", "fct_calc_z_pcts.R"))
 
 # generate data files
 files <- list.files(here("data-raw"), pattern = "^[^_]")
-files <- discard(files, \(x) str_like(x, "h2h.R"))
+files <- discard(files, \(x) str_like(x, "%h2h.R"))
 
 # Generate Data ----------------------------------------------------------
 
@@ -27,3 +27,5 @@ walk(files, \(file) {
   cat(paste("\nExecuting:", file, "\n"))
   source(here("data-raw", file))
 })
+
+# DOUBLE CHECK WHAT OBJECTS NEED TO BE SAVED
