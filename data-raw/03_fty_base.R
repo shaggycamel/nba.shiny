@@ -39,6 +39,7 @@ dfs_fty_roster <-
   select(-c(competitor_name, opponent_name)) |>
   as_tibble() |>
   mutate(across(matches("_id$|_period$"), \(x) as.integer(x))) |>
+  mutate(dow = wday(assigned_date, week_start = 1), .after = assigned_date) |>
   left_join(
     select(df_nba_season_segments, starts_with("season"), begin_date, end_date),
     by = join_by(season, assigned_date >= begin_date, assigned_date <= end_date)

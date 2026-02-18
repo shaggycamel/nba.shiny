@@ -36,6 +36,7 @@ df_nba_schedule <-
     across(ends_with("_id"), \(x) as.integer(x)),
     season = cur_season,
     season_type = "Regular Season",
+    dow = wday(game_date, week_start = 1),
     weekday = wday(game_date, label = TRUE, week_start = 1),
     weekday_date = str_c(weekday, " ", format(game_date, "%m/%d")),
     scheduled_to_play = ifelse(!is.na(game_id), 1L, game_id) # used in h2h calculations
@@ -119,6 +120,7 @@ dfs_rolling_stats <- df_player_box_score |>
             player_name,
             team,
             game_date,
+            dow,
             opponent,
             game_id,
             season,

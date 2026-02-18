@@ -11,6 +11,7 @@ library(tidyselect)
 library(tidyr)
 library(forcats)
 library(lubridate)
+library(rrapply)
 
 # functions
 source(here("R", "utils_database.R"))
@@ -19,7 +20,7 @@ source(here("R", "fct_calc_z_pcts.R"))
 
 # generate data files
 files <- list.files(here("data-raw"), pattern = "^[^_]")
-files <- discard(files, \(x) str_like(x, "%h2h.R"))
+# files <- discard(files, \(x) str_detect(x, "data_"))
 
 # Generate Data ----------------------------------------------------------
 
