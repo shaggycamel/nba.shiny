@@ -1,6 +1,6 @@
 # Player Comparison ------------------------------------------------------
 
-dfs_player_comparison <- map(set_names(names(dfs_free_agents)), \(lg) {
+dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id))), \(lg) {
   map(set_names(names(dfs_rolling_stats)), \(rl) {
     df_inr <- dfs_rolling_stats[[rl]] |>
       filter(season == cur_season) |>
@@ -47,7 +47,7 @@ dfs_player_comparison <- map(set_names(names(dfs_free_agents)), \(lg) {
       ) |>
       calc_z_pcts() |>
       left_join(
-        dfs_free_agents[[lg]] |>
+        dfs_fty_free_agents[[lg]] |>
           select(player_id) |>
           mutate(free_agent = TRUE),
         by = join_by(player_id)

@@ -51,7 +51,7 @@ dfs_fty_roster <-
 
 # Free Agents ------------------------------------------------------------
 
-dfs_free_agents <-
+dfs_fty_free_agents <-
   tbl(db_con(), I("fty.fty_free_agents_vw")) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>

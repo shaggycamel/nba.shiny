@@ -30,6 +30,7 @@ golem::add_module(name = "player_comparison", with_test = TRUE)
 ## Creates fct_* and utils_*
 golem::add_fct("calc_z_pcts", with_test = TRUE)
 golem::add_fct("reverse_plotly_legend_labels", with_test = TRUE)
+golem::add_fct("game_tbl_col_fmt", with_test = TRUE)
 golem::add_utils("database", with_test = TRUE)
 
 ## External resources

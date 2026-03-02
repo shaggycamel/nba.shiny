@@ -20,7 +20,7 @@ source(here("R", "fct_calc_z_pcts.R"))
 
 # generate data files
 files <- list.files(here("data-raw"), pattern = "^[^_]")
-# files <- discard(files, \(x) str_detect(x, "data_"))
+# files <- discard(files, \(x) str_detect(x, "h2h"))
 
 # Generate Data ----------------------------------------------------------
 

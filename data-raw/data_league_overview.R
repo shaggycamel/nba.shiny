@@ -21,10 +21,10 @@ df_fty_box_score <-
   filter(season == cur_season) |>
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
   relocate(starts_with("competitor"), .before = matchup) |>
+  as_tibble() |>
   group_by(league_id, matchup) |>
   calc_z_pcts() |>
   ungroup() |>
-  as_tibble() |>
   mutate(across(c(ends_with("_id"), matchup), \(x) as.integer(x)))
 
 

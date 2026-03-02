@@ -18,6 +18,10 @@ df_player_box_score <-
 
 # NBA Schedule -----------------------------------------------------------
 
+# OFTEN DUPLICATION...NEED TO FIX IN COCKROACH
+# df_nba_schedule |> view()
+# count(game_id) |> filter(n > 2)
+
 df_nba_schedule <-
   tbl(db_con(), I("nba.nba_season_segments_vw")) |>
   filter(season == cur_season, season_type == "Regular Season") |>
