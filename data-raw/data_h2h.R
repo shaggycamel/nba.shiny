@@ -8,7 +8,7 @@ dfs_h2h_past <- dfs_fty_roster |>
   select(-c(season_type, begin_date, end_date, player_acquisition_type, player_injury_status)) |>
   rename(game_date = assigned_date) |>
   left_join(
-    df_player_box_score |>
+    df_nba_player_box_score |>
       select(-c(contains("season"), espn_id, yahoo_id, player_name)),
     by = join_by(player_id, game_date, player_team == team)
   ) |>

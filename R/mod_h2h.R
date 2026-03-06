@@ -6,10 +6,10 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList selectInput radioButtons checkboxInput actionButton
-#' @importFrom bslib layout_sidebar sidebar layout_columns card
 #' @importFrom plotly plotlyOutput
 #' @importFrom reactable reactableOutput
+#' @importFrom bslib layout_sidebar sidebar layout_columns card
+#' @importFrom shiny tags tagList NS selectInput radioButtons checkboxInput actionButton
 mod_h2h_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -40,7 +40,7 @@ mod_h2h_ui <- function(id) {
           full_screen = TRUE,
           min_height = 200,
           max_height = 650,
-          shiny::tagList(
+          tagList(
             tags$div(
               style = "overflow-x: auto; white-space: nowrap; padding: 5px;",
               tags$div(style = "width: 1200px;", reactableOutput(ns("game_table_sum"))),
@@ -63,6 +63,20 @@ mod_h2h_ui <- function(id) {
 #' h2h Server Functions
 #'
 #' @noRd
+#'
+#' @importFrom rlang sym
+#' @importFrom scales label_percent
+#' @importFrom tibble deframe lst tibble
+#' @importFrom stringr str_c str_detect str_like
+#' @importFrom purrr pluck map compact list_rbind
+#' @importFrom tidyselect matches any_of contains
+#' @importFrom tidyr pivot_longer pivot_wider replace_na
+#' @importFrom plotly renderPlotly ggplotly layout config
+#' @importFrom reactable renderReactable reactable colDef reactableTheme
+#' @importFrom shiny observe req updateSelectInput bindEvent reactiveVal reactive
+#' @importFrom ggplot2 ggplot aes geom_col geom_hline scale_y_continuous scale_fill_brewer theme_bw labs
+#' @importFrom dplyr filter slice_max arrange select desc setdiff pull bind_rows filter_out mutate if_else summarise distinct across rename
+#'
 mod_h2h_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -81,7 +95,7 @@ mod_h2h_server <- function(id, carry_thru) {
       updateSelectInput(
         session,
         "matchup",
-        choices = sort(unique((dfs_fty_schedule[[as.character(carry_thru()$selected$league_id)]])$matchup_period)),
+        choices = sort(unique((pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)))$matchup_period)),
         selected = carry_thru()$selected$cur_matchup_period
       )
       updateSelectInput(
@@ -163,6 +177,20 @@ mod_h2h_server <- function(id, carry_thru) {
       )
     }) |>
       bindEvent(input$add_player, input$ex_player)
+
+    observe({
+      lst(
+        "competitor" = input$competitor,
+        "matchup" = input$matchup,
+        "window" = input$window,
+        "ex_player" = input$ex_player,
+        "add_player" = input$add_player,
+        "future_only" = input$future_only,
+        "future_from_tomorrow" = input$future_from_tomorrow,
+        "hl_player" = input$hl_player
+      )
+    }) |>
+      bindEvent(input$snapshot_config)
 
     # Data prep --------------------------------------------------------------
 
@@ -257,11 +285,11 @@ mod_h2h_server <- function(id, carry_thru) {
           player_name,
           inj_status,
           matches("f[g|t][m|a]"),
-          any_of(unname(ls_lo_lg_cats[[as.character(carry_thru()$selected$league_id)]][["Categories"]]))
+          any_of(unname(pluck(ls_lo_lg_cats, as.character(carry_thru()$selected$league_id))[["Categories"]]))
         ) |>
         pivot_longer(c(
           matches("f[g|t][m|a]"),
-          any_of(unname(ls_lo_lg_cats[[as.character(carry_thru()$selected$league_id)]][["Categories"]]))
+          any_of(unname(pluck(ls_lo_lg_cats, as.character(carry_thru()$selected$league_id))[["Categories"]]))
         )) |>
         mutate(value = if_else(inj_status == "Out", 0, value, missing = value)) |>
         summarise(
@@ -408,50 +436,48 @@ mod_h2h_server <- function(id, carry_thru) {
   })
 }
 
-
 ## To be copied in the UI
 # mod_h2h_ui("h2h_1")
 
 ## To be copied in the server
 # mod_h2h_server("h2h_1")
 
-# library(magrittr)
-library(shiny)
-library(bslib)
-library(shinyWidgets)
-library(reactable)
-library(plotly)
-library(stringr)
-library(purrr)
-library(tibble)
-library(dplyr)
-library(tidyr)
-load("data/ls_fty_lookup.rda")
-load("data/ls_lo_lg_cats.rda")
-load("data/dfs_fty_schedule.rda")
-load("data/dfs_fty_roster.rda")
-load("data/dfs_h2h_past.rda")
-load("data/dfs_h2h_today.rda")
-load("data/dfs_h2h_future.rda")
-source("R/fct_game_tbl_col_fmt.R")
+# library(shiny)
+# library(bslib)
+# library(shinyWidgets)
+# library(reactable)
+# library(plotly)
+# library(stringr)
+# library(purrr)
+# library(tibble)
+# library(dplyr)
+# library(tidyr)
+# load("data/ls_fty_lookup.rda")
+# load("data/ls_lo_lg_cats.rda")
+# load("data/dfs_fty_schedule.rda")
+# load("data/dfs_fty_roster.rda")
+# load("data/dfs_h2h_past.rda")
+# load("data/dfs_h2h_today.rda")
+# load("data/dfs_h2h_future.rda")
+# source("R/fct_game_tbl_col_fmt.R")
 
-ui <- page_fluid(
-  mod_h2h_ui("h2h_1")
-)
+# ui <- page_fluid(
+#   mod_h2h_ui("h2h_1")
+# )
 
-server <- function(input, output, session) {
-  carry_thru <- reactiveVal(list(
-    fty_parameters_met = reactiveVal(TRUE),
-    selected = reactiveValues(
-      platform = "ESPN",
-      league_id = 95537,
-      competitor_id = 5, # 25
-      competitor_name = "britney_spears",
-      cur_matchup_period = 18
-    )
-  ))
+# server <- function(input, output, session) {
+#   carry_thru <- reactiveVal(list(
+#     fty_parameters_met = reactiveVal(TRUE),
+#     selected = reactiveValues(
+#       platform = "ESPN",
+#       league_id = 1966813226,
+#       competitor_id = 5, # 25
+#       competitor_name = "britney_spears",
+#       cur_matchup_period = 19
+#     )
+#   ))
 
-  mod_h2h_server("h2h_1", carry_thru)
-}
+#   mod_h2h_server("h2h_1", carry_thru)
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)

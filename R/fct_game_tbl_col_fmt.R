@@ -29,7 +29,7 @@ game_tbl_col_fmt <- function(df, type = "player") {
   )
   col_fmt[["player_team"]] <- colDef(
     name = "",
-    align = ifelse(type == "sum", "center", "left"),
+    # align = ifelse(type == "sum", "center", "left"),
     minWidth = ifelse(type == "sum", 65 + 115, 65),
     sticky = "left",
     style = list(

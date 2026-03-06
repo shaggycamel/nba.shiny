@@ -6,9 +6,10 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList selectInput dateInput radioButtons actionButton
-#' @importFrom bslib layout_sidebar sidebar card
+#' @importFrom htmltools tagList
 #' @importFrom reactable reactableOutput
+#' @importFrom bslib layout_sidebar sidebar card
+#' @importFrom shiny NS selectInput dateInput radioButtons actionButton
 mod_schedule_table_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -29,11 +30,14 @@ mod_schedule_table_ui <- function(id) {
 #'
 #' @noRd
 #'
-#' @importFrom dplyr distinct filter between ungroup rowwise mutate c_across
-#' @importFrom stringr str_extract
-#' @importFrom shinyWidgets show_toast
-#' @importFrom reactable reactable renderReactable colDef
+#' @importFrom later later
 #' @importFrom purrr pluck map
+#' @importFrom rlang set_names
+#' @importFrom stringr str_extract
+#' @importFrom shinyWidgets show_toast updateSwitchInput
+#' @importFrom dplyr distinct filter between ungroup rowwise mutate c_across select slice
+#' @importFrom reactable reactable renderReactable colDef getReactableState updateReactable
+#' @importFrom shiny moduleServer observe req updateSelectInput updateDateInput bindEvent reactive
 mod_schedule_table_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -42,7 +46,7 @@ mod_schedule_table_server <- function(id, carry_thru) {
     observe({
       req(carry_thru()$fty_parameters_met())
 
-      chs <- names(dfs_fty_nba_mup_weeks[[as.character(carry_thru()$selected$league_id)]])
+      chs <- names(pluck(dfs_fty_nba_mup_weeks, as.character(carry_thru()$selected$league_id)))
       updateSelectInput(
         session = session,
         inputId = "matchup_selection",
@@ -50,7 +54,7 @@ mod_schedule_table_server <- function(id, carry_thru) {
         selected = chs[carry_thru()$selected$cur_matchup_period]
       )
 
-      mup_min_max_dts <- dfs_fty_schedule[[as.character(carry_thru()$selected$league_id)]] |>
+      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
         distinct(matchup_period, matchup_start, matchup_end) |>
         filter(matchup_period == carry_thru()$selected$cur_matchup_period)
 
@@ -68,7 +72,7 @@ mod_schedule_table_server <- function(id, carry_thru) {
     observe({
       req(carry_thru()$fty_parameters_met())
 
-      mup_min_max_dts <- dfs_fty_schedule[[as.character(carry_thru()$selected$league_id)]] |>
+      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
         filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
         distinct(matchup_period, matchup_start, matchup_end)
 
@@ -99,10 +103,10 @@ mod_schedule_table_server <- function(id, carry_thru) {
         ) |>
         select(Team) |>
         slice(getReactableState("schedule_table", "selected"))
-      print(selected_values)
+      # print(selected_values)
 
       # updateSwitchInput(session, "comparison_team_or_player", value = TRUE)
-      # later::later(
+      # later(
       #   \() updateSelectInput(session, "comparison_team_or_player_filter", choices = teams, selected = tms),
       #   delay = 0.05
       # )
@@ -124,7 +128,7 @@ mod_schedule_table_server <- function(id, carry_thru) {
 
       # Pinned date calculations
       mup_dts <- reactive(
-        dfs_fty_schedule[[as.character(carry_thru()$selected$league_id)]] |>
+        pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
           filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
           distinct(matchup_period, matchup_start, matchup_end)
       )
@@ -201,32 +205,32 @@ mod_schedule_table_server <- function(id, carry_thru) {
 ## To be copied in the server
 # mod_schedule_table_server("schedule_table_1")
 
-# library(shiny)
-# library(bslib)
-# library(reactable)
-# library(stringr)
-# library(purrr)
-# library(dplyr)
-# library(tidyr)
-# library(shinyWidgets)
-# load("data/dfs_fty_nba_mup_weeks.rda")
-# load("data/dfs_fty_schedule.rda")
-# load("data/cur_date.rda")
+library(shiny)
+library(bslib)
+library(reactable)
+library(stringr)
+library(purrr)
+library(dplyr)
+library(tidyr)
+library(shinyWidgets)
+load("data/dfs_fty_nba_mup_weeks.rda")
+load("data/dfs_fty_schedule.rda")
+load("data/cur_date.rda")
 
-# ui <- page_fluid(
-#   mod_schedule_table_ui("schedule_table_1")
-# )
+ui <- page_fluid(
+  mod_schedule_table_ui("schedule_table_1")
+)
 
-# server <- function(input, output, session) {
-#   carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       league_id = 24608,
-#       cur_matchup_period = 17
-#     )
-#   ))
+server <- function(input, output, session) {
+  carry_thru <- reactiveVal(list(
+    fty_parameters_met = reactiveVal(TRUE),
+    selected = reactiveValues(
+      league_id = 24608,
+      cur_matchup_period = 17
+    )
+  ))
 
-#   mod_schedule_table_server("schedule_table_1", carry_thru)
-# }
+  mod_schedule_table_server("schedule_table_1", carry_thru)
+}
 
-# shinyApp(ui, server)
+shinyApp(ui, server)

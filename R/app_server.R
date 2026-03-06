@@ -24,6 +24,8 @@ app_server <- function(input, output, session) {
     bindEvent(carry_thru()$fty_parameters_met())
 
   #------- H2H
+  observe(mod_h2h_server("h2h_1", carry_thru)) |>
+    bindEvent(carry_thru()$fty_parameters_met())
 
   #------- Schedule
   observe(mod_schedule_table_server("schedule_table_1", carry_thru)) |>

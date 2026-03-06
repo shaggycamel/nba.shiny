@@ -1,9 +1,9 @@
 # Player box score -------------------------------------------------------
 
-df_player_box_score <-
+df_nba_player_box_score <-
   tbl(db_con(), I("nba.nba_player_box_score_vw_new")) |>
   filter(season >= prev_season, !is.na(player_id)) |>
-  as_tibble() |> # following mutate opeations need tibble
+  as_tibble() |>
   mutate(
     across(ends_with("_id"), \(x) as.integer(x)),
     across(all_of(cats), \(x) as.double(x)),
@@ -85,7 +85,7 @@ df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw_new")) |>
 
 # Player rolling stats ---------------------------------------------------
 
-dfs_rolling_stats <- df_player_box_score |>
+dfs_rolling_stats <- df_nba_player_box_score |>
   arrange(game_date) |>
   filter(game_date < cur_date, !is.na(player_id)) |>
   mutate(across(all_of(cats), \(x) coalesce(x, 0))) |>
@@ -139,16 +139,12 @@ dfs_rolling_stats <- df_player_box_score |>
             relationship = "many-to-many"
           )
       ) |>
-      group_by(player_id) |>
+      mutate(inj_status = if_else(game_date < cur_date, coalesce(inj_status, "Available"), inj_status)) |>
       arrange(game_date) |>
+      group_by(player_id) |>
       fill(inj_status, .direction = "down") |>
       ungroup()
   })
 
 
-usethis::use_data(
-  # df_player_box_score, # don't think needed...
-  dfs_rolling_stats,
-  ls_nba_teams,
-  overwrite = TRUE
-)
+usethis::use_data(ls_nba_teams, overwrite = TRUE)

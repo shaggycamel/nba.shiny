@@ -77,7 +77,6 @@ ls_fty_lookup <- list(
 
 usethis::use_data(
   df_fty_base,
-  df_fty_cats,
   dfs_fty_schedule,
   dfs_fty_roster,
   ls_fty_lookup,

@@ -6,10 +6,10 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList selectInput selectizeInput radioButtons sliderInput checkboxInput
 #' @importFrom shinyWidgets switchInput
-#' @importFrom bslib layout_sidebar sidebar card
 #' @importFrom reactable reactableOutput
+#' @importFrom bslib layout_sidebar sidebar card
+#' @importFrom shiny NS tagList selectInput selectizeInput radioButtons sliderInput checkboxInput
 mod_player_comparison_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -42,13 +42,16 @@ mod_player_comparison_ui <- function(id) {
 #' player_comparison Server Functions
 #'
 #' @noRd
+#'
+#' @importFrom shiny moduleServer observe req updateSelectizeInput updateSelectInput bindEvent reactive
 #' @importFrom dplyr select filter arrange desc mutate all_of
-#' @importFrom purrr pluck map map_int discard discard_at set_names
-#' @importFrom rlang is_null
+#' @importFrom purrr pluck map map_int discard discard_at
+#' @importFrom rlang is_null set_names
 #' @importFrom tidyr nest replace_na
 #' @importFrom stringr str_detect str_like
 #' @importFrom tibble deframe
 #' @importFrom reactable reactable renderReactable colDef colFormat
+#'
 mod_player_comparison_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -115,10 +118,8 @@ mod_player_comparison_server <- function(id, carry_thru) {
       if (!is_null(input$team_player_names)) {
         # FILTER TEAM OR PLAYER
         if (input$team_player_switch) {
-          print(input$team_player_names)
           df <- filter(df, team_id %in% input$team_player_names)
         } else {
-          print(input$team_player_names)
           df <- filter(df, player_id %in% input$team_player_names)
         }
       }

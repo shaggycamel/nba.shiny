@@ -11,7 +11,7 @@ library(tidyselect)
 library(tidyr)
 library(forcats)
 library(lubridate)
-library(rrapply)
+
 
 # functions
 source(here("R", "utils_database.R"))
@@ -28,5 +28,3 @@ walk(files, \(file) {
   cat(paste("\nExecuting:", file, "\n"))
   source(here("data-raw", file))
 })
-
-# DOUBLE CHECK WHAT OBJECTS NEED TO BE SAVED

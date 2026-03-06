@@ -17,7 +17,7 @@ app_ui <- function(request) {
       # put blank login page somewhere
       nav_spacer(),
       nav_panel("Overview", mod_league_overview_ui("league_overview_1")),
-      # nav_panel("H2H", <X>),
+      nav_panel("H2H", mod_h2h_ui("h2h_1")),
       nav_panel("Schedule", mod_schedule_table_ui("schedule_table_1")),
       nav_panel("Player Comparison", mod_player_comparison_ui("player_comparison_1")),
       nav_item(actionButton(
