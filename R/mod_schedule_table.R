@@ -6,10 +6,6 @@
 #'
 #' @noRd
 #'
-#' @importFrom htmltools tagList
-#' @importFrom reactable reactableOutput
-#' @importFrom bslib layout_sidebar sidebar card
-#' @importFrom shiny NS selectInput dateInput radioButtons actionButton
 mod_schedule_table_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -30,14 +26,6 @@ mod_schedule_table_ui <- function(id) {
 #'
 #' @noRd
 #'
-#' @importFrom later later
-#' @importFrom purrr pluck map
-#' @importFrom rlang set_names
-#' @importFrom stringr str_extract
-#' @importFrom shinyWidgets show_toast updateSwitchInput
-#' @importFrom dplyr distinct filter between ungroup rowwise mutate c_across select slice
-#' @importFrom reactable reactable renderReactable colDef getReactableState updateReactable
-#' @importFrom shiny moduleServer observe req updateSelectInput updateDateInput bindEvent reactive
 mod_schedule_table_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns

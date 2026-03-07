@@ -6,7 +6,6 @@
 #'
 #' @noRd
 #'
-#' @importFrom shiny NS tagList fluidPage
 mod_login_modal_ui <- function(id) {
   ns <- NS(id)
 
@@ -16,11 +15,6 @@ mod_login_modal_ui <- function(id) {
 }
 
 #' @noRd
-#'
-#' @importFrom tibble lst
-#' @importFrom purrr pluck
-#' @importFrom dplyr pull filter
-#' @importFrom shiny span tags tagList HTML NS reactiveVal observe removeModal renderText bindEvent updateSelectInput showModal modalDialog selectizeInput textOutput actionButton icon
 #'
 mod_login_modal_server <- function(id) {
   moduleServer(id, function(input, output, session) {

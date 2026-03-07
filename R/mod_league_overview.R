@@ -6,10 +6,6 @@
 #'
 #' @noRd
 #'
-#' @importFrom plotly plotlyOutput
-#' @importFrom shinyWidgets switchInput
-#' @importFrom bslib layout_sidebar sidebar card
-#' @importFrom shiny tags HTML NS tagList selectInput checkboxInput
 mod_league_overview_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -36,14 +32,6 @@ mod_league_overview_ui <- function(id) {
 #'
 #' @noRd
 #'
-#' @importFrom rlang sym
-#' @importFrom tidyselect matches
-#' @importFrom purrr pluck map_chr
-#' @importFrom stringr str_c str_which
-#' @importFrom dplyr filter arrange mutate across
-#' @importFrom plotly ggplotly renderPlotly style layout rangeslider config
-#' @importFrom shiny moduleServer observe req updateSelectInput bindEvent reactive
-#' @importFrom ggplot2 ggplot aes geom_line geom_path geom_point scale_x_continuous scale_y_reverse labs theme_bw
 mod_league_overview_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {
     # Update categories ------------------------------------------------------

@@ -6,10 +6,6 @@
 #'
 #' @noRd
 #'
-#' @importFrom plotly plotlyOutput
-#' @importFrom reactable reactableOutput
-#' @importFrom bslib layout_sidebar sidebar layout_columns card
-#' @importFrom shiny tags tagList NS selectInput radioButtons checkboxInput actionButton
 mod_h2h_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -63,19 +59,6 @@ mod_h2h_ui <- function(id) {
 #' h2h Server Functions
 #'
 #' @noRd
-#'
-#' @importFrom rlang sym
-#' @importFrom scales label_percent
-#' @importFrom tibble deframe lst tibble
-#' @importFrom purrr pluck map compact list_rbind
-#' @importFrom tidyselect matches any_of contains
-#' @importFrom tidyr pivot_longer pivot_wider replace_na
-#' @importFrom plotly renderPlotly ggplotly layout config
-#' @importFrom stringr str_c str_detect str_like str_subset
-#' @importFrom reactable renderReactable reactable colDef reactableTheme
-#' @importFrom shiny observe req updateSelectInput bindEvent reactiveVal reactive
-#' @importFrom ggplot2 ggplot aes geom_col geom_hline scale_y_continuous scale_fill_brewer theme_bw labs
-#' @importFrom dplyr filter slice_max arrange select desc setdiff pull bind_rows filter_out mutate if_else summarise distinct across rename
 #'
 mod_h2h_server <- function(id, carry_thru) {
   moduleServer(id, function(input, output, session) {

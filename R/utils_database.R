@@ -1,6 +1,4 @@
 # Read only cockroach database connection\
-#' @importFrom DBI dbConnect
-#' @importFrom RPostgres Postgres
 db_con <- function() {
   dbConnect(
     drv = Postgres(),
