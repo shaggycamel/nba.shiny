@@ -13,7 +13,7 @@ Rscript ./data-raw/_generate_all.R
 
 # ── Build Docker image ─────────────────────────────────────────────────────
 echo "▶ Building Docker image: $FULL_IMAGE..."
-docker build -f ./docker/Dockerfile --progress=plain -t "$FULL_IMAGE" .
+docker build -f ./docker/Dockerfile -t "$FULL_IMAGE" .
 
 # ── Log in to Docker Hub ───────────────────────────────────────────────────
 echo "▶ Logging in to Docker Hub..."
