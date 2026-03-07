@@ -6,9 +6,6 @@
 #'
 #' @noRd
 #'
-#' @importFrom reactable colDef
-#' @importFrom purrr map set_names
-#' @importFrom stringr str_subset str_detect
 game_tbl_col_fmt <- function(df, type = "player") {
   col_fmt <- map(set_names(str_subset(colnames(df), "player_", negate = TRUE)), \(x) {
     colDef(minWidth = 70, align = "center", style = function(value) {

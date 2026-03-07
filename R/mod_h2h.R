@@ -67,11 +67,11 @@ mod_h2h_ui <- function(id) {
 #' @importFrom rlang sym
 #' @importFrom scales label_percent
 #' @importFrom tibble deframe lst tibble
-#' @importFrom stringr str_c str_detect str_like
 #' @importFrom purrr pluck map compact list_rbind
 #' @importFrom tidyselect matches any_of contains
 #' @importFrom tidyr pivot_longer pivot_wider replace_na
 #' @importFrom plotly renderPlotly ggplotly layout config
+#' @importFrom stringr str_c str_detect str_like str_subset
 #' @importFrom reactable renderReactable reactable colDef reactableTheme
 #' @importFrom shiny observe req updateSelectInput bindEvent reactiveVal reactive
 #' @importFrom ggplot2 ggplot aes geom_col geom_hline scale_y_continuous scale_fill_brewer theme_bw labs

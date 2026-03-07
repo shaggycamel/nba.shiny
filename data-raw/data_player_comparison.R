@@ -42,7 +42,7 @@ dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id
       pivot_wider(names_from = performance, values_from = stat_value) |>
       left_join(
         df_inr |>
-          select(player_id, any_of(unique(df_fty_cats$nba_category))),
+          select(player_id, min, any_of(unique(df_fty_cats$nba_category))),
         by = join_by(player_id)
       ) |>
       calc_z_pcts() |>

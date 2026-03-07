@@ -3,6 +3,7 @@
 df_fty_base <-
   tbl(db_con(), I("fty.fty_base_vw")) |>
   filter(season == cur_season) |>
+  filter(league_id != 24608) |>
   arrange(str_to_lower(league_name), str_to_lower(competitor_name)) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
@@ -13,15 +14,16 @@ df_fty_base <-
 df_fty_cats <-
   tbl(db_con(), I("fty.fty_categories_vw")) |>
   filter(season == cur_season | is.na(league_id)) |>
+  filter(league_id != 24608 | is.na(league_id)) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
-
 
 # Fty schedule -----------------------------------------------------------
 
 dfs_fty_schedule <-
   tbl(db_con(), I("fty.fty_league_schedule_vw")) |>
   filter(season == cur_season) |>
+  filter(league_id != 24608) |>
   as_tibble() |>
   mutate(
     across(matches("_id$|_period$"), \(x) as.integer(x)),
@@ -36,6 +38,7 @@ dfs_fty_schedule <-
 dfs_fty_roster <-
   tbl(db_con(), I("fty.fty_team_roster_schedule_vw")) |>
   filter(season == cur_season) |>
+  filter(league_id != 24608) |>
   select(-c(competitor_name, opponent_name)) |>
   as_tibble() |>
   mutate(across(matches("_id$|_period$"), \(x) as.integer(x))) |>
@@ -48,15 +51,45 @@ dfs_fty_roster <-
   nest_by(league_id) |>
   deframe()
 
+# Fantasy Box Scores -----------------------------------------------------
+
+df_fty_box_score <-
+  tbl(db_con(), I("fty.fty_matchup_box_score_vw")) |>
+  filter(season == cur_season) |>
+  filter(league_id != 24608) |>
+  select(-season, -platform, -matches("r_name|r_abbrev")) |>
+  relocate(starts_with("competitor"), .before = matchup) |>
+  as_tibble() |>
+  group_by(league_id, matchup) |>
+  calc_z_pcts() |>
+  ungroup() |>
+  mutate(across(c(ends_with("_id"), matchup), \(x) as.integer(x)))
+
 
 # Free Agents ------------------------------------------------------------
 
 dfs_fty_free_agents <-
   tbl(db_con(), I("fty.fty_free_agents_vw")) |>
+  filter(league_id != 24608) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
   nest_by(league_id) |>
   deframe()
+
+# League categories ------------------------------------------------------
+
+ls_lo_lg_cats <-
+  map(set_names(unique(na.omit(df_fty_cats$league_id))), \(x) {
+    list(
+      "Overall" = c("All Categories" = "all_cat"),
+      # Order categories appropiately
+      "Categories" = df_fty_cats |>
+        filter(h2h_cat, league_id == x) |>
+        select(fmt_category, nba_category) |>
+        deframe(),
+      "Z Scores" = c("Field Goal Z" = "fg_z", "Free Throw Z" = "ft_z")
+    )
+  })
 
 
 # Conversion list --------------------------------------------------------
@@ -79,6 +112,7 @@ usethis::use_data(
   df_fty_base,
   dfs_fty_schedule,
   dfs_fty_roster,
+  ls_lo_lg_cats,
   ls_fty_lookup,
   overwrite = TRUE
 )

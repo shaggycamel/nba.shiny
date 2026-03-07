@@ -1,33 +1,3 @@
-# League categories ------------------------------------------------------
-
-ls_lo_lg_cats <-
-  map(set_names(unique(na.omit(df_fty_cats$league_id))), \(x) {
-    list(
-      "Overall" = c("All Categories" = "all_cat"),
-      # Order categories appropiately
-      "Categories" = df_fty_cats |>
-        filter(h2h_cat, league_id == x) |>
-        select(fmt_category, nba_category) |>
-        deframe(),
-      "Z Scores" = c("Field Goal Z" = "fg_z", "Free Throw Z" = "ft_z")
-    )
-  })
-
-
-# Fantasy Box Scores -----------------------------------------------------
-
-df_fty_box_score <-
-  tbl(db_con(), I("fty.fty_matchup_box_score_vw")) |>
-  filter(season == cur_season) |>
-  select(-season, -platform, -matches("r_name|r_abbrev")) |>
-  relocate(starts_with("competitor"), .before = matchup) |>
-  as_tibble() |>
-  group_by(league_id, matchup) |>
-  calc_z_pcts() |>
-  ungroup() |>
-  mutate(across(c(ends_with("_id"), matchup), \(x) as.integer(x)))
-
-
 # League overview dataframes ---------------------------------------------
 
 dfs_league_overview <-
@@ -48,16 +18,28 @@ dfs_league_overview <-
     by = join_by(league_id, competitor_id, matchup)
   ) |>
   mutate(
-    across(any_of(c(df_fty_cats$nba_category, "matchup")), \(x) lead(x, order_by = matchup), .names = "{.col}_lead"),
+    across(
+      any_of(c(df_fty_cats$nba_category, "matchup")),
+      \(x) lead(x, order_by = matchup),
+      .names = "{.col}_lead"
+    ),
     .by = c(league_id, competitor_id)
   ) |>
   mutate(
-    across(any_of(discard(df_fty_cats$nba_category, \(x) x == "tov")), \(x) rank(x * -1), .names = "{.col}_rank"),
+    across(
+      any_of(discard(df_fty_cats$nba_category, \(x) x == "tov")),
+      \(x) rank(x * -1),
+      .names = "{.col}_rank"
+    ),
     .by = c(league_id, matchup)
   ) |>
   mutate(tov_rank = rank(tov), .by = c(league_id, matchup)) |>
   mutate(
-    across(any_of(str_c(df_fty_cats$nba_category, "_rank")), \(x) lead(x, order_by = matchup), .names = "{.col}_lead"),
+    across(
+      any_of(str_c(df_fty_cats$nba_category, "_rank")),
+      \(x) lead(x, order_by = matchup),
+      .names = "{.col}_lead"
+    ),
     .by = c(league_id, competitor_id)
   ) |>
   mutate(across(where(is.numeric), \(x) as.double(replace_na(x, 0)))) |>
@@ -126,8 +108,4 @@ dfs_league_overview <-
   deframe()
 
 
-usethis::use_data(
-  dfs_league_overview,
-  ls_lo_lg_cats,
-  overwrite = TRUE
-)
+usethis::use_data(dfs_league_overview, overwrite = TRUE)

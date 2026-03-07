@@ -119,7 +119,6 @@ dfs_today_future_generation <- function(timeframe) {
 dfs_h2h_today <- dfs_today_future_generation("today")
 dfs_h2h_future <- dfs_today_future_generation("future")
 
-
 # Write data
 usethis::use_data(
   dfs_h2h_past,

@@ -66,13 +66,14 @@ mod_league_overview_server <- function(id, carry_thru) {
     # Plot -------------------------------------------------------------------
 
     output$fty_lo_plt <- renderPlotly({
-      req(carry_thru()$fty_parameters_met())
+      req(carry_thru()$fty_parameters_met(), df_lo())
 
       plot_col <- input$fty_lg_ov_cat
       if (input$fty_lg_ov_rank_toggle) {
         plot_col <- str_c(plot_col, "_rank")
       }
 
+      req(plot_col %in% colnames(df_lo()))
       plt <- if (input$fty_lg_ov_cum_toggle) {
         df_lo() |>
           ggplot(aes(x = matchup_sigmoid, y = !!sym(plot_col), colour = competitor_name)) +
