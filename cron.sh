@@ -11,6 +11,10 @@ FULL_IMAGE="$DOCKERHUB_USER/$IMAGE_NAME:$TAG"
 echo "▶ Running _generate_all.R..."
 Rscript ./data-raw/_generate_all.R
 
+# ── Build R package tarball ────────────────────────────────────────────────
+echo "▶ Building R package tarball..."
+R CMD build .
+
 # ── Build Docker image ─────────────────────────────────────────────────────
 echo "▶ Building Docker image: $FULL_IMAGE..."
 docker build -f ./docker/Dockerfile -t "$FULL_IMAGE" .
