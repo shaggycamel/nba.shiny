@@ -6,7 +6,9 @@ DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
 IMAGE_NAME="nba.shiny"
 TAG="${TAG:-latest}"
 FULL_IMAGE="$DOCKERHUB_USER/$IMAGE_NAME:$TAG"
+HUGGINGFACE_TOKEN="$HUGGINGFACE_TOKEN"
 
+# Custom function for messages
 step() { printf "\n▶ %s\n\n" "$*"; }
 
 # ── Regenerate data ────────────────────────────────────────────────────────
@@ -29,9 +31,11 @@ echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
 step "Pushing $FULL_IMAGE to Docker Hub..."
 docker push "$FULL_IMAGE"
 
-# ── Trigger Render deploy ──────────────────────────────────────────────────
-step "Triggering Render deployment..."
-curl -X POST https://api.render.com/deploy/srv-d6lam94hg0os73c8til0?key=1myqCIiCnvk
+# ── Trigger Huggingface rebuild ────────────────────────────────────────────
+step "Triggering Huggingface rebuild..."
+curl -X POST \
+  "https://huggingface.co/api/spaces/shaggycamel/nba-shiny/restart?factory=true" \
+  -H "Authorization: Bearer $HUGGINGFACE_TOKEN"
 
-printf "\n✔ Done: %s deployed to Render\n" "$FULL_IMAGE"
+printf "\n✔ Done: %s rebuilt on Huggingface\n" "$FULL_IMAGE"
 
