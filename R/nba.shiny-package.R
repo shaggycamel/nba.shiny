@@ -16,7 +16,7 @@
 #' @importFrom ggplot2 aes geom_col geom_hline geom_line geom_path geom_point ggplot labs scale_fill_brewer scale_x_continuous scale_y_reverse theme_bw
 #' @importFrom reactable colDef colFormat getReactableState reactable reactableOutput reactableTheme renderReactable updateReactable
 #' @importFrom plotly config ggplotly layout plotlyOutput rangeslider renderPlotly style
-#' @importFrom dplyr across all_of arrange between bind_rows c_across desc distinct filter filter_out if_else mutate pull rename rowwise select slice slice_max summarise ungroup
+#' @importFrom dplyr across all_of arrange between bind_rows c_across desc distinct filter if_else mutate pull rename rowwise select slice slice_max summarise ungroup
 #' @importFrom bslib bs_theme card layout_columns layout_sidebar nav_item nav_menu nav_panel nav_spacer page_navbar sidebar
 #' @importFrom shiny NS actionButton bindEvent checkboxInput dateInput icon modalDialog observe radioButtons reactive reactiveVal reactiveValues removeModal renderText renderUI req selectInput selectizeInput showModal sliderInput span tags textOutput uiOutput updateDateInput updateSelectInput updateSelectizeInput
 ## usethis namespace: end
