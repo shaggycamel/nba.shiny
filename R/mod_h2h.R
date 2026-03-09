@@ -216,7 +216,7 @@ mod_h2h_server <- function(id, carry_thru) {
                   pluck(dfs_h2h_today, l_id, input$matchup, x, input$window, .default = tibble(player_id = 0))
                 } else {
                   pluck(dfs_h2h_today, l_id, input$matchup, x, input$window, .default = tibble(player_id = 0)) |>
-                    filter_out(player_id %in% (as.integer(input$ex_player) %||% 0)) |>
+                    filter(!player_id %in% (as.integer(input$ex_player) %||% 0)) |>
                     bind_rows(
                       dfs_h2h_today |>
                         pluck(l_id, "free_agent", "free_agent", input$window, .default = tibble(player_id = 0)) |>
@@ -233,7 +233,7 @@ mod_h2h_server <- function(id, carry_thru) {
               } else {
                 dfs_h2h_future |>
                   pluck(l_id, input$matchup, x, input$window, .default = tibble(player_id = 0)) |>
-                  filter_out(player_id %in% (as.integer(input$ex_player) %||% 0)) |>
+                  filter(!player_id %in% (as.integer(input$ex_player) %||% 0)) |>
                   bind_rows(
                     dfs_h2h_future |>
                       pluck(l_id, "free_agent", "free_agent", input$window, .default = tibble(player_id = 0)) |>
