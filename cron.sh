@@ -1,8 +1,19 @@
 #!/bin/bash
-set -e # force exit if error
-cd ./github/nba.shiny # directory
 
 # ── Config ────────────────────────────────────────────────────────────────────
+
+# force exit if error
+set -e 
+
+# If executing from cron source .profile (containing tokens)
+if [ ! -t 1 ]; then
+    source ./.profile
+fi
+
+ # directory
+cd ./github/nba.shiny
+
+# Variables
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
 IMAGE_NAME="nba.shiny"
 TAG="${TAG:-latest}"
