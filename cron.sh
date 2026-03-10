@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e # force exit if error
+cd ./github/nba.shiny # directory
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
