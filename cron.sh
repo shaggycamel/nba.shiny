@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Remember to chmod +x cron.sh on nuc after pulling latest file
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 # force exit if error
