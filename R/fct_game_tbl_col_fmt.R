@@ -11,6 +11,8 @@ game_tbl_col_fmt <- function(df, type = "player") {
     colDef(minWidth = 70, align = "center", style = function(value) {
       if (str_detect(value, "\\*") | value > 10) {
         list(background = "#ea7878ff")
+      } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") == cur_date, warning = \(w) FALSE)) {
+        list(background = "#f1e78e")
       }
     })
   })

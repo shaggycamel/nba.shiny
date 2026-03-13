@@ -39,7 +39,7 @@ mod_player_comparison_ui <- function(id) {
 #'
 #' @noRd
 #'
-mod_player_comparison_server <- function(id, carry_thru) {
+mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -89,6 +89,14 @@ mod_player_comparison_server <- function(id, carry_thru) {
       updateSelectInput(session, "team_player_names", choices = chs)
     }) |>
       bindEvent(input$team_player_switch, input$free_agent_filter)
+
+    observe({
+      req(copy_teams_trigger())
+      teams <- unname(ls_nba_teams[copy_teams_trigger()])
+      updateSwitchInput(session, "team_player_switch", value = TRUE)
+      session$onFlushed(\() updateSelectInput(session, "team_player_names", selected = teams), once = TRUE)
+    }) |>
+      bindEvent(copy_teams_trigger())
 
     df_comparison <- reactive({
       df <- dfs_player_comparison |>

@@ -3,6 +3,7 @@
 #' @importFrom DBI dbConnect
 #' @importFrom config get
 #' @importFrom later later
+#' @importFrom lubridate parse_date_time
 #' @importFrom scales label_percent
 #' @importFrom htmltools tagList
 #' @importFrom tibble deframe lst tibble
