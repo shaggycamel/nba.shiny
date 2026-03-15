@@ -12,7 +12,7 @@ dfs_h2h_past <- dfs_fty_roster |>
       select(-c(contains("season"), espn_id, yahoo_id, player_name)),
     by = join_by(player_id, game_date, player_team == team)
   ) |>
-  mutate(fmt_date = format(game_date, "%d/%m")) |>
+  mutate(fmt_date = format(game_date, "%a (%d/%m)")) |>
   distinct() |> # FOR SAFETY
   nest_by(league_id, matchup_period, competitor_id) |>
   nest_by(league_id, matchup_period) |>
@@ -99,7 +99,7 @@ dfs_today_future_generation <- function(timeframe) {
       relationship = "many-to-many"
     ) |>
     select(-c(matchup_start, matchup_end)) |>
-    mutate(fmt_date = format(game_date, "%d/%m")) |>
+    mutate(fmt_date = format(game_date, "%a (%d/%m)")) |>
     distinct() # FOR SAFETY
 
   if (nrow(df) == 0) {

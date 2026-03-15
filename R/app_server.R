@@ -8,6 +8,7 @@ app_server <- function(input, output, session) {
   #
   # ------- Base reactive
   carry_thru <- reactiveVal()
+  copy_teams_trigger <- reactiveVal(NULL)
 
   #------- Login modal
   observe(carry_thru(mod_login_modal_server("login_modal_1"))) |>
@@ -20,18 +21,14 @@ app_server <- function(input, output, session) {
   })
 
   #------- League Overview
-  observe(mod_league_overview_server("league_overview_1", carry_thru)) |>
-    bindEvent(carry_thru()$fty_parameters_met())
+  mod_league_overview_server("league_overview_1", carry_thru)
 
   #------- H2H
-  observe(mod_h2h_server("h2h_1", carry_thru)) |>
-    bindEvent(carry_thru()$fty_parameters_met())
+  mod_h2h_server("h2h_1", carry_thru)
 
   #------- Schedule
-  observe(mod_schedule_table_server("schedule_table_1", carry_thru)) |>
-    bindEvent(carry_thru()$fty_parameters_met())
+  mod_schedule_table_server("schedule_table_1", carry_thru, copy_teams_trigger)
 
   #------- Player Comparison
-  observe(mod_player_comparison_server("player_comparison_1", carry_thru)) |>
-    bindEvent(carry_thru()$fty_parameters_met())
+  mod_player_comparison_server("player_comparison_1", carry_thru, copy_teams_trigger)
 }

@@ -76,6 +76,21 @@ dfs_fty_free_agents <-
   nest_by(league_id) |>
   deframe()
 
+
+# Recent Avtivity --------------------------------------------------------
+
+dfs_fty_recent_activity <-
+  tbl(db_con(), I("fty.fty_recent_activity_vw")) |>
+  filter(season == cur_season) |>
+  filter(!league_id %in% c(24608)) |>
+  select(league_id, competitor_id, competitor_name, player, action, timestamp) |>
+  as_tibble() |>
+  mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
+  arrange(desc(timestamp)) |>
+  nest_by(league_id) |>
+  deframe()
+
+
 # League categories ------------------------------------------------------
 
 ls_lo_lg_cats <-
@@ -112,6 +127,7 @@ usethis::use_data(
   df_fty_base,
   dfs_fty_schedule,
   dfs_fty_roster,
+  dfs_fty_recent_activity,
   ls_lo_lg_cats,
   ls_fty_lookup,
   overwrite = TRUE

@@ -42,7 +42,7 @@ df_nba_schedule <-
     season_type = "Regular Season",
     dow = wday(game_date, week_start = 1),
     weekday = wday(game_date, label = TRUE, week_start = 1),
-    weekday_date = str_c(weekday, " ", format(game_date, "%m/%d")),
+    weekday_date = str_c(weekday, " ", format(game_date, "(%d/%m)")),
     scheduled_to_play = ifelse(!is.na(game_id), 1L, game_id) # used in h2h calculations
   )
 

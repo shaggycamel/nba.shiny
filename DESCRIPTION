@@ -16,6 +16,7 @@ Imports:
     golem,
     htmltools,
     later,
+    lubridate,
     plotly,
     purrr,
     reactable,
