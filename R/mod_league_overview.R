@@ -9,8 +9,14 @@
 mod_league_overview_ui <- function(id) {
   ns <- NS(id)
   tagList(
+    tags$head(
+      tags$style(HTML(
+        "
+          .selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}
+        "
+      ))
+    ),
     layout_sidebar(
-      tags$head(tags$style(HTML(".selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}"))),
       sidebar = sidebar(
         selectInput(
           ns("fty_lg_ov_cat"),
@@ -21,8 +27,12 @@ mod_league_overview_ui <- function(id) {
         switchInput(ns("fty_lg_ov_cum_toggle"), value = TRUE, onLabel = "W2W", offLabel = "Cum", size = "small"),
         checkboxInput(ns("fty_lg_ov_just_h2h"), "Just H2H")
       ),
-      card(full_screen = TRUE, plotlyOutput(ns("fty_lo_plt"))),
-      fillable = TRUE
+      card(
+        height = 1250,
+        fill = FALSE,
+        card(full_screen = TRUE, min_height = 500, max_height = 600, plotlyOutput(ns("fty_lo_plt"))),
+        card(full_screen = TRUE, min_height = 200, max_height = 650, reactableOutput(ns("tbl_recent_activity")))
+      )
     )
   )
 }
@@ -50,6 +60,18 @@ mod_league_overview_server <- function(id, carry_thru) {
 
     df_lo <- reactive(pluck(dfs_league_overview, as.character(carry_thru()$selected$league_id)))
     df_lo_pt <- reactive(filter(df_lo(), as.integer(matchup_sigmoid) == matchup_sigmoid))
+
+    df_tbl <- reactive({
+      req(carry_thru()$fty_parameters_met())
+
+      if (input$fty_lg_ov_just_h2h) {
+        pluck(dfs_fty_recent_activity, as.character(carry_thru()$selected$league_id)) |>
+          filter(competitor_id %in% c(carry_thru()$selected$competitor_id, carry_thru()$selected$opponent_id))
+      } else {
+        pluck(dfs_fty_recent_activity, as.character(carry_thru()$selected$league_id))
+      }
+    }) |>
+      bindEvent(carry_thru()$fty_parameters_met(), input$fty_lg_ov_just_h2h)
 
     # Plot -------------------------------------------------------------------
 
@@ -119,6 +141,30 @@ mod_league_overview_server <- function(id, carry_thru) {
       }
       plt
     })
+
+    output$tbl_recent_activity <- renderReactable({
+      req(df_tbl())
+
+      reactable(
+        df_tbl(),
+        pagination = FALSE,
+        bordered = TRUE,
+        style = list(border = "1px solid #000000"),
+        highlight = TRUE,
+        filterable = TRUE,
+        defaultSorted = list(timestamp = "desc"),
+        defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
+        columns = list(
+          competitor_id = colDef(show = FALSE),
+          competitor_name = colDef(name = "Competitor"),
+          player = colDef(name = "Player"),
+          action = colDef(name = "Action"),
+          timestamp = colDef(name = "Time (EST)", cell = \(value) {
+            format(value, "%a %d/%m %H:%M", tz = "America/New_York")
+          })
+        )
+      )
+    })
   })
 }
 
@@ -137,6 +183,7 @@ mod_league_overview_server <- function(id, carry_thru) {
 # library(dplyr)
 # library(tidyr)
 # load("data/dfs_league_overview.rda")
+# load("data/dfs_recent_activity.rda")
 # load("data/ls_lo_lg_cats.rda")
 
 # ui <- page_fluid(

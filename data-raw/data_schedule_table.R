@@ -26,6 +26,7 @@ dfs_fty_nba_mup_weeks <-
     .by = c(league_id, matchup_period),
     .after = weekday
   ) |>
+  na.omit() |> # ACTUALLY NEED TO FIGURE OUT WHERE NA VALUES ARE COMING FROM
   nest_by(league_id) |>
   deframe() |>
   map(\(x) {

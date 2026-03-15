@@ -187,7 +187,7 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         defaultColDef = colDef(
           align = "left",
           minWidth = 120,
-          headerStyle = list(background = "blue", color = "white"),
+          headerStyle = list(background = "#cce5ff"),
           format = colFormat(digits = 1)
         ),
         columns = col_fmt,
@@ -211,7 +211,7 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
                 defaultColDef = colDef(
                   align = "left",
                   minWidth = 120,
-                  headerStyle = list(background = "lightblue", color = "white")
+                  headerStyle = list(background = "#cce5ff"),
                 ),
                 columns = list(player_names = colDef(minWidth = 1000))
               )

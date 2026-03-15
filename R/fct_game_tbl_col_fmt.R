@@ -7,14 +7,20 @@
 #' @noRd
 #'
 game_tbl_col_fmt <- function(df, type = "player") {
-  col_fmt <- map(set_names(str_subset(colnames(df), "player_", negate = TRUE)), \(x) {
-    colDef(minWidth = 70, align = "center", style = function(value) {
-      if (str_detect(value, "\\*") | value > 10) {
-        list(background = "#ea7878ff")
-      } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") == cur_date, warning = \(w) FALSE)) {
-        list(background = "#f1e78e")
+  col_fmt <- map(set_names(str_subset(colnames(df), "\\/")), \(x) {
+    nm <- str_split_1(x, " ")
+    colDef(
+      minWidth = 70,
+      align = "center",
+      header = tags$span(nm[1], tags$br(), nm[2]),
+      style = function(value) {
+        if (str_detect(value, "\\*") | value > 10) {
+          list(background = "#ea7878ff")
+        } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") == cur_date, warning = \(w) FALSE)) {
+          list(background = "#f1e78e94")
+        }
       }
-    })
+    )
   })
   col_fmt[["competitor"]] <- colDef(show = FALSE)
   col_fmt[["player_id"]] <- colDef(show = FALSE)

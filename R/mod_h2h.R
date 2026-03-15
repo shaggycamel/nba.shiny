@@ -384,7 +384,7 @@ mod_h2h_server <- function(id, carry_thru) {
         style = list(border = "1px solid #000000"),
         highlight = TRUE,
         sortable = FALSE,
-        defaultColDef = colDef(headerStyle = list(background = "blue", color = "white")),
+        defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
         columns = col_fmt,
       )
     })
@@ -407,7 +407,7 @@ mod_h2h_server <- function(id, carry_thru) {
         highlight = TRUE,
         theme = reactableTheme(headerStyle = list(display = "none")),
         defaultSorted = list(player_team = "asc", player_name = "asc"),
-        defaultColDef = colDef(headerStyle = list(background = "blue", color = "white")),
+        defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
         columns = col_fmt,
         rowStyle = function(index) {
           if (df$player_id[index] %in% as.numeric(input$hl_player)) {

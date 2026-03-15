@@ -14,7 +14,7 @@ mod_schedule_table_ui <- function(id) {
         selectInput(ns("matchup_selection"), "Matchup", choices = character(0), selectize = FALSE),
         dateInput(ns("pin_date"), "Pinned Date"),
         radioButtons(ns("pin_dir"), label = "Pin Direction", choices = c("-", "+"), selected = "+", inline = TRUE),
-        actionButton(ns("copy_teams"), "Copy teams to Comparison") # DOESN'T WORK
+        actionButton(ns("copy_teams"), "Copy teams to Comparison")
       ),
       card(full_screen = TRUE, reactableOutput(ns("schedule_table"))),
       fillable = TRUE
@@ -29,6 +29,8 @@ mod_schedule_table_ui <- function(id) {
 mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # Initialise & Filter Reactivity --------------------------------------------------------
 
     # On load...
     observe({
@@ -80,91 +82,152 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
     }) |>
       bindEvent(input$matchup_selection, ignoreInit = TRUE)
 
-    # On copy_teams...YET TO IMPLEMENT
+    # On copy_teams
     observe({
       req(carry_thru()$fty_parameters_met())
 
       selected_values <- dfs_fty_nba_mup_weeks |>
         pluck(as.character(carry_thru()$selected$league_id), input$matchup_selection) |>
         select(Team) |>
+        # mutate(Team = as.character(Team)) |>
         slice(getReactableState("schedule_table", "selected"))
 
-      copy_teams_trigger(selected_values$Team)
-
-      show_toast(
-        title = NULL,
-        text = "Teams added to comparison...",
-        position = "bottom-start",
-        type = "info",
-        timer = 2000
-      )
-
-      updateReactable("schedule_table", selected = integer(0))
+      if (length(selected_values$Team) == 0) {
+        show_toast(
+          title = NULL,
+          text = "No teams selected. Comparison not updated...",
+          position = "bottom-start",
+          type = "warning",
+          timer = 2000
+        )
+      } else {
+        copy_teams_trigger(selected_values$Team)
+        show_toast(
+          title = NULL,
+          text = "Teams added to comparison...",
+          position = "bottom-start",
+          type = "info",
+          timer = 2000
+        )
+        updateReactable("schedule_table", selected = integer(0))
+      }
     }) |>
       bindEvent(input$copy_teams, ignoreInit = TRUE)
 
-    output$schedule_table <- renderReactable({
+    # Data Prep --------------------------------------------------------------
+
+    # Pinned date calculations
+    mup_dts <- reactive({
       req(carry_thru()$fty_parameters_met())
 
-      # Pinned date calculations
-      mup_dts <- reactive(
-        pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
-          filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
-          distinct(matchup_period, matchup_start, matchup_end)
-      )
+      pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
+        filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
+        distinct(matchup_period, matchup_start, matchup_end)
+    }) |>
+      bindEvent(input$matchup_selection)
 
-      pin_ix <- reactive(as.integer(difftime(input$pin_date, mup_dts()$matchup_start)))
+    # Pin index calc
+    pin_ix <- reactive({
+      req(mup_dts())
+      as.integer(difftime(input$pin_date, mup_dts()$matchup_start)) + 3
+    }) |>
+      bindEvent(input$pin_date)
 
-      # dataframe for reactable
-      df_tbl <- reactive({
-        max_range <- as.integer(difftime(mup_dts()$matchup_end, mup_dts()$matchup_start))
+    # Data for reactive table
+    df_tbl <- reactive({
+      req(pin_ix())
 
-        dfs_fty_nba_mup_weeks |>
-          pluck(
-            as.character(carry_thru()$selected$league_id),
-            input$matchup_selection
-          ) |>
-          rowwise() |>
-          mutate(
-            Pin = sum(c_across(
-              if (input$pin_dir == "+") {
-                (pin_ix() + 2):(max_range + 3)
-              } else {
-                3:(pin_ix() + 2)
-              }
-            ))
-          ) |>
-          ungroup()
-      })
+      max_range <- as.integer(difftime(mup_dts()$matchup_end, mup_dts()$matchup_start)) + 3
+
+      dfs_fty_nba_mup_weeks |>
+        pluck(as.character(carry_thru()$selected$league_id), input$matchup_selection) |>
+        rowwise() |>
+        mutate(
+          Pin = sum(c_across(
+            if (input$pin_date == mup_dts()$matchup_start & input$pin_dir == "-") {
+              0
+            } else if (input$pin_dir == "+") {
+              pin_ix():max_range
+            } else {
+              3:(pin_ix() - 1)
+            }
+          ))
+        ) |>
+        ungroup()
+    }) |>
+      bindEvent(input$matchup_selection, input$pin_dir, input$pin_date)
+
+    #   # Schedule Table ---------------------------------------------------------
+
+    output$schedule_table <- renderReactable({
+      req(df_tbl())
 
       # Column formatting
-      col_fmt <- map(set_names(tail(colnames(df_tbl()), 2)), ~ colDef(style = list(backgroundColor = "#eee5ff94")))
-      col_fmt[[pluck(colnames(df_tbl()), pin_ix() + 3)]] <- colDef(style = list(backgroundColor = "#eaea78e8"))
-      col_fmt[["Team"]] <- colDef(sticky = "left", style = list(backgroundColor = "#c1eccaff", fontWeight = "bold"))
+      col_fmt <- map(set_names(str_subset(colnames(df_tbl()), "\\/")), \(x) {
+        nm <- str_split_1(x, " ")
+        colDef(
+          header = tags$span(nm[1], tags$br(), nm[2]),
+          filterInput = \(values, name) {
+            tags$select(
+              onchange = sprintf("Reactable.setFilter('schedule-table', '%s', event.target.value || undefined)", name),
+              tags$option(value = "", ""),
+              lapply(c(0, 1), tags$option),
+              "aria-label" = sprintf("Filter %s", name),
+              style = "width: 100%; height: 28px;"
+            )
+          },
+          style = if (length(str_subset(colnames(df_tbl()), "\\/")) %% 7 > 0 & x %in% tail(colnames(df_tbl()), 2)) {
+            list(backgroundColor = "#eee5ff94")
+          } else if (parse_date_time(x, orders = "%a (%d/%m)") == input$pin_date) {
+            list(backgroundColor = "#f1e78e94")
+          }
+        )
+      })
+      col_fmt[["Team"]] <- colDef(
+        sticky = "left",
+        style = list(backgroundColor = "#c1eccaff", fontWeight = "bold"),
+        filterInput = \(values, name) {
+          dataListId <- sprintf("%s-%s-list", 'schedule-table', name)
+          tagList(
+            tags$input(
+              type = "text",
+              list = dataListId,
+              oninput = sprintf(
+                "Reactable.setFilter('%s', '%s', event.target.value || undefined)",
+                'schedule-table',
+                name
+              ),
+              "aria-label" = sprintf("Filter %s", name),
+              style = "width: 100%; height: 28px;"
+            ),
+            tags$datalist(
+              id = dataListId,
+              lapply(unique(values), function(value) tags$option(value = value))
+            )
+          )
+        }
+      )
       col_fmt[["Pin"]] <- colDef(
         sticky = "left",
         style = list(backgroundColor = "#c1eccaff", fontWeight = "bold", borderRight = "2px solid #0f0f0fff"),
         headerStyle = list(
-          borderRight = "2px solid #0f0f0fff",
-          background = "#0073b7",
-          color = "white", # White text
+          background = "#cce5ff",
           fontWeight = "bold",
-          textAlign = "left",
-          borderBottom = "2px solid #005a91"
+          textAlign = "center",
+          borderRight = "2px solid #0f0f0fff"
+        ),
+        filterMethod = JS(
+          "function(rows, columnId, filterValue) {
+            return rows.filter(function(row) {
+              return row.values[columnId] >= filterValue
+            })
+          }"
         )
       )
 
       reactable(
         df_tbl(),
-        defaultColDef = colDef(
-          headerStyle = list(
-            background = "#0073b7",
-            color = "white", # White text
-            fontWeight = "bold",
-            textAlign = "left",
-            borderBottom = "2px solid #005a91"
-          )
-        ),
+        defaultColDef = colDef(headerStyle = list(background = "#cce5ff", fontWeight = "bold", textAlign = "center")),
         selection = "multiple",
         filterable = TRUE,
         striped = TRUE,
@@ -173,7 +236,8 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
         pagination = FALSE,
         height = "85vh",
         wrap = TRUE,
-        columns = col_fmt
+        columns = col_fmt,
+        elementId = "schedule-table"
       )
     })
   })
@@ -185,32 +249,33 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
 ## To be copied in the server
 # mod_schedule_table_server("schedule_table_1")
 
-# library(shiny)
-# library(bslib)
-# library(reactable)
-# library(stringr)
-# library(purrr)
-# library(dplyr)
-# library(tidyr)
-# library(shinyWidgets)
-# load("data/dfs_fty_nba_mup_weeks.rda")
-# load("data/dfs_fty_schedule.rda")
-# load("data/cur_date.rda")
+library(shiny)
+library(bslib)
+library(reactable)
+library(stringr)
+library(purrr)
+library(dplyr)
+library(tidyr)
+library(shinyWidgets)
+library(lubridate)
+load("data/dfs_fty_nba_mup_weeks.rda")
+load("data/dfs_fty_schedule.rda")
+load("data/cur_date.rda")
 
-# ui <- page_fluid(
-#   mod_schedule_table_ui("schedule_table_1")
-# )
+ui <- page_fluid(
+  mod_schedule_table_ui("schedule_table_1")
+)
 
-# server <- function(input, output, session) {
-#   carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       league_id = 24608,
-#       cur_matchup_period = 17
-#     )
-#   ))
+server <- function(input, output, session) {
+  carry_thru <- reactiveVal(list(
+    fty_parameters_met = reactiveVal(TRUE),
+    selected = reactiveValues(
+      league_id = 95537,
+      cur_matchup_period = 19
+    )
+  ))
 
-#   mod_schedule_table_server("schedule_table_1", carry_thru)
-# }
+  mod_schedule_table_server("schedule_table_1", carry_thru)
+}
 
-# shinyApp(ui, server)
+shinyApp(ui, server)
