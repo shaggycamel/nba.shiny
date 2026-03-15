@@ -4,7 +4,7 @@
 #' @importFrom config get
 #' @importFrom later later
 #' @importFrom lubridate parse_date_time
-#' @importFrom scales label_percent
+#' @importFrom scales label_percent percent
 #' @importFrom htmltools tagList
 #' @importFrom tibble deframe lst tibble
 #' @importFrom tidyr nest pivot_longer pivot_wider replace_na
