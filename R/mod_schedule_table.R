@@ -249,33 +249,33 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
 ## To be copied in the server
 # mod_schedule_table_server("schedule_table_1")
 
-library(shiny)
-library(bslib)
-library(reactable)
-library(stringr)
-library(purrr)
-library(dplyr)
-library(tidyr)
-library(shinyWidgets)
-library(lubridate)
-load("data/dfs_fty_nba_mup_weeks.rda")
-load("data/dfs_fty_schedule.rda")
-load("data/cur_date.rda")
+# library(shiny)
+# library(bslib)
+# library(reactable)
+# library(stringr)
+# library(purrr)
+# library(dplyr)
+# library(tidyr)
+# library(shinyWidgets)
+# library(lubridate)
+# load("data/dfs_fty_nba_mup_weeks.rda")
+# load("data/dfs_fty_schedule.rda")
+# load("data/cur_date.rda")
 
-ui <- page_fluid(
-  mod_schedule_table_ui("schedule_table_1")
-)
+# ui <- page_fluid(
+#   mod_schedule_table_ui("schedule_table_1")
+# )
 
-server <- function(input, output, session) {
-  carry_thru <- reactiveVal(list(
-    fty_parameters_met = reactiveVal(TRUE),
-    selected = reactiveValues(
-      league_id = 95537,
-      cur_matchup_period = 19
-    )
-  ))
+# server <- function(input, output, session) {
+#   carry_thru <- reactiveVal(list(
+#     fty_parameters_met = reactiveVal(TRUE),
+#     selected = reactiveValues(
+#       league_id = 95537,
+#       cur_matchup_period = 19
+#     )
+#   ))
 
-  mod_schedule_table_server("schedule_table_1", carry_thru)
-}
+#   mod_schedule_table_server("schedule_table_1", carry_thru)
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)

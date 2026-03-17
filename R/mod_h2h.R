@@ -291,7 +291,7 @@ mod_h2h_server <- function(id, carry_thru) {
               summarise(
                 #fmt: skip
                 label = paste0(
-                  "Total - ", round(sum(!!m_col, na.rm = TRUE), 0), "/", round(sum(!!a_col, na.rm = TRUE), 0), " (", percent(sum(!!m_col, na.rm = TRUE)/sum(!!a_col, na.rm = TRUE), accuracy = 0.01),")\n\n",
+                  "Total - ", round(sum(!!m_col, na.rm = TRUE), 0), "/", round(sum(!!a_col, na.rm = TRUE), 0), " (", label_percent(accuracy = 0.01)(sum(!!m_col, na.rm = TRUE)/sum(!!a_col, na.rm = TRUE)),")\n\n",
                   paste(str_c(player_name, " - ", round(!!m_col, 0), "/", round(!!a_col, 0)), collapse = "\n")
                 ),
                 name = str_c(col_string, "_pct"),
@@ -433,43 +433,44 @@ mod_h2h_server <- function(id, carry_thru) {
 ## To be copied in the server
 # mod_h2h_server("h2h_1")
 
-library(shiny)
-library(bslib)
-library(shinyWidgets)
-library(reactable)
-library(plotly)
-library(stringr)
-library(purrr)
-library(tibble)
-library(dplyr)
-library(tidyr)
-library(scales)
-load("data/ls_fty_lookup.rda")
-load("data/ls_lo_lg_cats.rda")
-load("data/dfs_fty_schedule.rda")
-load("data/dfs_fty_roster.rda")
-load("data/dfs_h2h_past.rda")
-load("data/dfs_h2h_today.rda")
-load("data/dfs_h2h_future.rda")
-source("R/fct_game_tbl_col_fmt.R")
+# library(shiny)
+# library(bslib)
+# library(shinyWidgets)
+# library(reactable)
+# library(plotly)
+# library(stringr)
+# library(purrr)
+# library(tibble)
+# library(dplyr)
+# library(tidyr)
+# library(scales)
+# library(lubridate)
+# load("data/ls_fty_lookup.rda")
+# load("data/ls_lo_lg_cats.rda")
+# load("data/dfs_fty_schedule.rda")
+# load("data/dfs_fty_roster.rda")
+# load("data/dfs_h2h_past.rda")
+# load("data/dfs_h2h_today.rda")
+# load("data/dfs_h2h_future.rda")
+# source("R/fct_game_tbl_col_fmt.R")
 
-ui <- page_fluid(
-  mod_h2h_ui("h2h_1")
-)
+# ui <- page_fluid(
+#   mod_h2h_ui("h2h_1")
+# )
 
-server <- function(input, output, session) {
-  carry_thru <- reactiveVal(list(
-    fty_parameters_met = reactiveVal(TRUE),
-    selected = reactiveValues(
-      platform = "ESPN",
-      league_id = 1966813226,
-      competitor_id = 5, # 25
-      competitor_name = "britney_spears",
-      cur_matchup_period = 19
-    )
-  ))
+# server <- function(input, output, session) {
+#   carry_thru <- reactiveVal(list(
+#     fty_parameters_met = reactiveVal(TRUE),
+#     selected = reactiveValues(
+#       platform = "ESPN",
+#       league_id = 1966813226,
+#       competitor_id = 5, # 25
+#       competitor_name = "britney_spears",
+#       cur_matchup_period = 19
+#     )
+#   ))
 
-  mod_h2h_server("h2h_1", carry_thru)
-}
+#   mod_h2h_server("h2h_1", carry_thru)
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)
