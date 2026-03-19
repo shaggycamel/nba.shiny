@@ -6,17 +6,23 @@
 #'
 #' @noRd
 #'
+#'
 mod_player_comparison_ui <- function(id) {
   ns <- NS(id)
   tagList(
     layout_sidebar(
       sidebar = sidebar(
-        switchInput(
-          ns("team_player_switch"),
-          value = TRUE,
-          onLabel = "Team",
-          offLabel = "Player",
-          size = "small"
+        layout_columns(
+          switchInput(
+            ns("team_player_switch"),
+            value = TRUE,
+            onLabel = "Team",
+            offLabel = "Player",
+            size = "small"
+          ),
+          checkboxInput(ns("free_agent_filter"), "FA", value = TRUE),
+          col_widths = c(10, 2),
+          gap = "1px"
         ),
         selectInput(ns("team_player_names"), NULL, choices = ls_nba_teams, multiple = TRUE),
         selectizeInput(
@@ -27,7 +33,13 @@ mod_player_comparison_ui <- function(id) {
         ),
         radioButtons(ns("window"), "Rolling days", c(7, 15, 30), inline = TRUE),
         sliderInput(ns("minute_filter"), "Minute Filter", min = 0, max = 50, value = 20, round = TRUE),
-        checkboxInput(ns("free_agent_filter"), "Free Agents only", value = TRUE),
+        switchInput(
+          ns("log_inj_toggle"),
+          value = TRUE,
+          onLabel = "Log",
+          offLabel = "Inj",
+          size = "small"
+        )
       ),
       card(full_screen = TRUE, reactableOutput(ns("comparison_table"))),
       fillable = TRUE
@@ -42,6 +54,8 @@ mod_player_comparison_ui <- function(id) {
 mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # Widget operation -------------------------------------------------------
 
     # On load...
     observe({
@@ -94,9 +108,20 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
       req(copy_teams_trigger())
       teams <- unname(ls_nba_teams[copy_teams_trigger()])
       updateSwitchInput(session, "team_player_switch", value = TRUE)
-      session$onFlushed(\() updateSelectInput(session, "team_player_names", selected = teams), once = TRUE)
+      later(\() updateSelectInput(session, "team_player_names", selected = teams), delay = 0.3)
     }) |>
       bindEvent(copy_teams_trigger())
+
+    # Data reactivity --------------------------------------------------------
+
+    # Relevant cats
+    cats <- reactive({
+      ls_lo_lg_cats |>
+        pluck(as.character(carry_thru()$select$league_id)) |>
+        discard_at(\(x) x == "Overall") |>
+        unlist(use.names = FALSE) |>
+        discard(\(x) str_like(x, "%_pct"))
+    })
 
     df_comparison <- reactive({
       df <- dfs_player_comparison |>
@@ -119,6 +144,26 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         }
       }
 
+      # calc excel at here
+      df <- df |>
+        left_join(
+          df |>
+            pivot_longer(any_of(cats()), names_to = "category") |>
+            mutate(
+              rank = case_when(
+                category == "tov" ~ percent_rank(-value),
+                .default = percent_rank(value)
+              ),
+              .by = category
+            ) |>
+            select(player_id, category, rank) |>
+            filter(rank >= 0.9) |>
+            arrange(player_id, desc(rank)) |>
+            summarise(`Excels At` = paste0(category, " (", round(rank, 2), ")", collapse = "\n"), .by = player_id),
+          by = join_by(player_id)
+        )
+
+      # Excels at filter
       if (!is_null(input$excels_at_filter)) {
         df <- filter(df, str_detect(`Excels At`, paste0(input$excels_at_filter, collapse = "|"))) |>
           mutate(xl_at_count = map_int(`Excels At`, \(x) sum(str_detect(x, input$excels_at_filter))))
@@ -129,20 +174,25 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
       df
     })
 
-    output$comparison_table <- renderReactable({
-      # Relevant cats
-      cats <- ls_lo_lg_cats |>
-        pluck(as.character(carry_thru()$select$league_id)) |>
-        discard_at(\(x) x == "Overall") |>
-        unlist(use.names = FALSE) |>
-        discard(\(x) str_like(x, "%_pct"))
+    # Comparison table -------------------------------------------------------
 
+    output$comparison_table <- renderReactable({
       # df creation
       df <- df_comparison() |>
-        select(team, player = player_name, min, all_of(cats), `Excels At`, `Weak At`, inj_status, xl_at_count)
+        select(
+          team,
+          player_id,
+          player = player_name,
+          min,
+          all_of(cats()),
+          `Excels At`,
+          `Weak At`,
+          inj_status,
+          xl_at_count
+        )
 
       # Column formatting
-      col_fmt <- map(set_names(c("min", cats)), \(x) {
+      col_fmt <- map(set_names(c("min", cats())), \(x) {
         colDef(style = function(value) {
           if (value == if (x == "tov") min(df[[x]], na.rm = TRUE) else max(df[[x]], na.rm = TRUE)) {
             list(background = "lightgreen", fontWeight = "bold")
@@ -164,6 +214,7 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         }
       })
       col_fmt[["inj_status"]] <- colDef(show = FALSE)
+      col_fmt[["player_id"]] <- colDef(show = FALSE)
       col_fmt[["player"]] <- colDef(style = \(value, index) {
         status <- replace_na(df[["inj_status"]][index], "Available")
         if (status == "Out") {
@@ -182,7 +233,8 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         pagination = FALSE,
         bordered = TRUE,
         highlight = TRUE,
-        defaultSorted = list(min = "desc", player = "asc"),
+        # Possible to retain order when filter changes???
+        # defaultSorted = list(min = "desc", player = "asc"),
         defaultSortOrder = "desc",
         defaultColDef = colDef(
           align = "left",
@@ -193,20 +245,32 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         columns = col_fmt,
         onClick = "expand",
         details = function(ix) {
-          # format this table nicely somehow...
-          tm <- df$team[ix]
-          if (is.na(tm)) {
-            tags$div(tags$h2(class = "title", "Team not found..."))
+          pl_tm <- if (input$log_inj_toggle) df$player[ix] else df$team[ix]
+          pl_id <- df$player_id[ix]
+          pl_or_tm_hf_header <- paste(if (input$log_inj_toggle) "Player" else "Team", "not found...")
+          log_or_inj_header <- str_c(
+            pl_tm,
+            if (input$log_inj_toggle) "Game Log" else paste("Last", input$window, "Day Injury History"),
+            sep = " "
+          )
+
+          df_log_or_inj <- if (input$log_inj_toggle) {
+            pluck(ls_player_game_log, as.character(pl_id), .default = tibble(!!pl_tm := "No Games")) |>
+              select(game_date, opponent, min, any_of(cats()))
+          } else {
+            pluck(ls_injuries, input$window, pl_tm, .default = tibble(!!pl_tm := "No Injuries"))
+          }
+
+          if (is.na(pl_tm)) {
+            tags$div(tags$h2(class = "title", pl_or_tm_hf_header))
           } else {
             tags$div(
-              style = "margin-left: 10px; margin-top: 10px; margin-bottom: 30px;",
-              tags$h2(
-                class = "title",
-                paste(tm, "Last", input$window, "Day Injury History: ")
-              ),
+              style = "margin-left: 45px; margin-top: 10px; margin-bottom: 30px;",
+              tags$h2(class = "title", log_or_inj_header),
               reactable(
-                pluck(ls_injuries, input$window, tm, .default = tibble(!!tm := "No Injuries")),
-                pagination = FALSE,
+                df_log_or_inj,
+                pagination = TRUE,
+                defaultPageSize = 5,
                 fullWidth = FALSE,
                 defaultColDef = colDef(
                   align = "left",
@@ -228,35 +292,37 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
 ## To be copied in the server
 # mod_player_comparison_server("player_comparison_1")
 
-# library(shiny)
-# library(bslib)
-# library(reactable)
-# library(stringr)
-# library(rlang)
-# library(purrr)
-# library(dplyr)
-# library(tibble)
-# library(tidyr)
-# library(shinyWidgets)
+library(shiny)
+library(bslib)
+library(reactable)
+library(stringr)
+library(rlang)
+library(purrr)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(shinyWidgets)
+library(later)
 
-# load("data/dfs_player_comparison.rda")
-# load("data/ls_lo_lg_cats.rda")
-# load("data/ls_nba_teams.rda")
-# load("data/ls_injuries.rda")
+load("data/dfs_player_comparison.rda")
+load("data/ls_lo_lg_cats.rda")
+load("data/ls_nba_teams.rda")
+load("data/ls_injuries.rda")
+load("data/ls_player_game_log.rda")
 
-# ui <- page_fluid(
-#   mod_player_comparison_ui("player_comparison_1")
-# )
+ui <- page_fluid(
+  mod_player_comparison_ui("player_comparison_1")
+)
 
-# server <- function(input, output, session) {
-#   carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       league_id = 24608
-#     )
-#   ))
+server <- function(input, output, session) {
+  carry_thru <- reactiveVal(list(
+    fty_parameters_met = reactiveVal(TRUE),
+    selected = reactiveValues(
+      league_id = 24608
+    )
+  ))
 
-#   mod_player_comparison_server("player_comparison_1", carry_thru)
-# }
+  mod_player_comparison_server("player_comparison_1", carry_thru, reactiveVal(c("ATL" = 1610612737)))
+}
 
-# shinyApp(ui, server)
+shinyApp(ui, server)

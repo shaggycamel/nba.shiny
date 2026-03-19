@@ -11,15 +11,14 @@ mod_h2h_ui <- function(id) {
   tagList(
     layout_sidebar(
       sidebar = sidebar(
-        layout_columns(
-          selectInput(ns("competitor"), "Competitor", choices = character(0)),
-          selectInput(ns("matchup"), "Matchup", choices = 0)
-        ),
+        selectInput(ns("competitor"), NULL, choices = character(0)),
+        selectInput(ns("matchup"), NULL, choices = 0),
         radioButtons(ns("window"), "Rolling days", c(7, 15, 30), inline = TRUE),
-        layout_columns(
-          selectInput(ns("ex_player"), "Exclude", choices = character(0), multiple = TRUE),
-          selectInput(ns("add_player"), "Add", choices = character(0), multiple = TRUE),
-        ),
+        actionButton(ns("alter_team"), "Alter Team"),
+        # layout_columns(
+        #   selectInput(ns("ex_player"), "Exclude", choices = character(0), multiple = TRUE),
+        #   selectInput(ns("add_player"), "Add", choices = character(0), multiple = TRUE),
+        # ),
         layout_columns(
           checkboxInput(ns("future_only"), "Future"),
           checkboxInput(ns("future_from_tomorrow"), "Tmrw")
@@ -106,15 +105,15 @@ mod_h2h_server <- function(id, carry_thru) {
       updateSelectInput(
         session,
         "add_player",
-        choices = dfs_h2h_today |>
+        choices = dfs_h2h_future |>
           pluck(
             as.character(carry_thru()$selected$league_id),
             "free_agent",
             "free_agent",
             input$window
           ) |>
-          arrange(desc(!!sym("min"))) |>
-          select(player_name, player_id) |>
+          arrange(desc(min)) |>
+          distinct(player_name, player_id) |>
           na.omit() |>
           deframe()
       )
@@ -339,7 +338,8 @@ mod_h2h_server <- function(id, carry_thru) {
           names_from = fmt_date,
           values_from = scheduled_to_play,
           values_fill = "0"
-        )
+        ) |>
+        select(-starts_with("NA"))
     })
 
     df_tbl_sum <- reactive({
@@ -433,44 +433,46 @@ mod_h2h_server <- function(id, carry_thru) {
 ## To be copied in the server
 # mod_h2h_server("h2h_1")
 
-# library(shiny)
-# library(bslib)
-# library(shinyWidgets)
-# library(reactable)
-# library(plotly)
-# library(stringr)
-# library(purrr)
-# library(tibble)
-# library(dplyr)
-# library(tidyr)
-# library(scales)
-# library(lubridate)
-# load("data/ls_fty_lookup.rda")
-# load("data/ls_lo_lg_cats.rda")
-# load("data/dfs_fty_schedule.rda")
-# load("data/dfs_fty_roster.rda")
-# load("data/dfs_h2h_past.rda")
-# load("data/dfs_h2h_today.rda")
-# load("data/dfs_h2h_future.rda")
-# source("R/fct_game_tbl_col_fmt.R")
+library(shiny)
+library(bslib)
+library(shinyWidgets)
+library(reactable)
+library(plotly)
+library(stringr)
+library(purrr)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(lubridate)
 
-# ui <- page_fluid(
-#   mod_h2h_ui("h2h_1")
-# )
+load("data/cur_date.rda")
+load("data/ls_fty_lookup.rda")
+load("data/ls_lo_lg_cats.rda")
+load("data/dfs_fty_schedule.rda")
+load("data/dfs_fty_roster.rda")
+load("data/dfs_h2h_past.rda")
+load("data/dfs_h2h_today.rda")
+load("data/dfs_h2h_future.rda")
 
-# server <- function(input, output, session) {
-#   carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       platform = "ESPN",
-#       league_id = 1966813226,
-#       competitor_id = 5, # 25
-#       competitor_name = "britney_spears",
-#       cur_matchup_period = 19
-#     )
-#   ))
+source("R/fct_game_tbl_col_fmt.R")
 
-#   mod_h2h_server("h2h_1", carry_thru)
-# }
+ui <- page_fluid(
+  mod_h2h_ui("h2h_1")
+)
 
-# shinyApp(ui, server)
+server <- function(input, output, session) {
+  carry_thru <- reactiveVal(list(
+    fty_parameters_met = reactiveVal(TRUE),
+    selected = reactiveValues(
+      platform = "ESPN",
+      league_id = 1382487116,
+      competitor_id = 6,
+      cur_matchup_period = 21
+    )
+  ))
+
+  mod_h2h_server("h2h_1", carry_thru)
+}
+
+shinyApp(ui, server)

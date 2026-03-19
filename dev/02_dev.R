@@ -23,6 +23,7 @@ attachment::att_amend_desc()
 golem::add_module(name = "login_modal", with_test = TRUE)
 golem::add_module(name = "league_overview", with_test = TRUE)
 golem::add_module(name = "h2h", with_test = TRUE)
+golem::add_module(name = "alter_team_modal", with_test = TRUE)
 golem::add_module(name = "schedule_table", with_test = TRUE)
 golem::add_module(name = "player_comparison", with_test = TRUE)
 
