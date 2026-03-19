@@ -6,22 +6,43 @@
 #'
 #' @noRd
 #'
-game_tbl_col_fmt <- function(df, type = "player") {
+game_tbl_col_fmt <- function(df, dt, mup_end, type = "player") {
+  print("pin")
+  print(dt)
+  print("end")
+  print(mup_end)
+
   col_fmt <- map(set_names(str_subset(colnames(df), "\\/")), \(x) {
     nm <- str_split_1(x, " ")
     colDef(
       minWidth = 70,
       align = "center",
       header = tags$span(nm[1], tags$br(), nm[2]),
-      style = function(value) {
-        if (str_detect(value, "\\*") | value > 10) {
+      style = function(value, index) {
+        if (
+          tryCatch(
+            parse_date_time(x, orders = "%a (%d/%m)") > coalesce(df$grey_date[index], as.Date("2999-01-01")),
+            warning = \(w) FALSE
+          )
+        ) {
+          list(background = "#d7d7d5", color = "#d7d7d5")
+        } else if (str_detect(value, "\\*") | value > 10) {
           list(background = "#ea7878ff")
-        } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") == cur_date, warning = \(w) FALSE)) {
+        } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") == dt, warning = \(w) FALSE)) {
           list(background = "#f1e78e94")
+        } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") > mup_end, warning = \(w) FALSE)) {
+          list(background = "#eee5ff94")
         }
       }
     )
   })
+  col_fmt[["games_remaining"]] <- colDef(
+    minWidth = 70,
+    align = "center",
+    header = tags$span("Games", tags$br(), "Remaining"),
+    style = list(background = "#96e5cbeb")
+  )
+  col_fmt[["grey_date"]] <- colDef(show = FALSE)
   col_fmt[["competitor"]] <- colDef(show = FALSE)
   col_fmt[["player_id"]] <- colDef(show = FALSE)
   col_fmt[["player_name"]] <- colDef(

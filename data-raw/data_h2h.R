@@ -12,6 +12,19 @@ dfs_h2h_past <- dfs_fty_roster |>
       select(-c(contains("season"), espn_id, yahoo_id, player_name)),
     by = join_by(player_id, game_date, player_team == team)
   ) |>
+  (\(df) {
+    bind_rows(
+      df,
+      df |>
+        distinct(league_id, matchup_period, matchup_start, matchup_end) |>
+        mutate(matchup_end_plus = matchup_end + ddays(2), ) |>
+        left_join(
+          select(df, -starts_with("matchup")),
+          by = join_by(league_id, matchup_end < game_date, matchup_end_plus >= game_date)
+        )
+      # select(-matchup_end_plus)
+    )
+  })() |>
   mutate(fmt_date = format(game_date, "%a (%d/%m)")) |>
   distinct() |> # FOR SAFETY
   nest_by(league_id, matchup_period, competitor_id) |>
@@ -98,9 +111,24 @@ dfs_today_future_generation <- function(timeframe) {
       by = join_by(player_id, player_team == team, matchup_start <= game_date, matchup_end >= game_date),
       relationship = "many-to-many"
     ) |>
-    select(-c(matchup_start, matchup_end)) |>
     mutate(fmt_date = format(game_date, "%a (%d/%m)")) |>
     distinct() # FOR SAFETY
+
+  # Add matchup lookahead
+  # Not sure how this will look when cur_date == matchup_end
+  if (timeframe == "future") {
+    df <- bind_rows(
+      df,
+      df |>
+        distinct(league_id, matchup_period, matchup_start, matchup_end) |>
+        mutate(matchup_end_plus = matchup_end + ddays(2)) |>
+        left_join(
+          select(df, -starts_with("matchup")),
+          by = join_by(league_id, matchup_end < game_date, matchup_end_plus >= game_date)
+        )
+      # select(-matchup_end_plus)
+    )
+  }
 
   if (nrow(df) == 0) {
     df
@@ -118,6 +146,7 @@ dfs_today_future_generation <- function(timeframe) {
 # today/future
 dfs_h2h_today <- dfs_today_future_generation("today")
 dfs_h2h_future <- dfs_today_future_generation("future")
+
 
 # Write data
 usethis::use_data(

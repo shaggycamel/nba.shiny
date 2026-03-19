@@ -23,6 +23,7 @@ mod_h2h_ui <- function(id) {
           checkboxInput(ns("future_only"), "Future"),
           checkboxInput(ns("future_from_tomorrow"), "Tmrw")
         ),
+        dateInput(ns("pin_date"), NULL),
         selectInput(ns("hl_player"), "Highlight Player", choices = character(0), multiple = TRUE),
         selectInput(ns("log_config"), "Log Filter Config", choices = character(0), size = 4, selectize = FALSE),
         actionButton(ns("snapshot_config"), "Snapshot config"),
@@ -117,10 +118,47 @@ mod_h2h_server <- function(id, carry_thru) {
           na.omit() |>
           deframe()
       )
+
       # updateSelectInput(session, "log_config", choices = ls_log_config)
     }) |>
       bindEvent(carry_thru()$fty_parameters_met())
 
+    # Initial date picker, relies on df_base
+    observe({
+      req(df_base())
+
+      updateDateInput(
+        session,
+        "pin_date",
+        value = cur_date,
+        min = unique(na.omit(df_base()$matchup_start)),
+        max = unique(na.omit(df_base()$matchup_end))
+      )
+    }) |>
+      bindEvent(df_base(), once = TRUE)
+
+    # Ongoing Date picker pin_date
+    observe({
+      req(df_base())
+      updateDateInput(
+        session,
+        "pin_date",
+        value = if (cur_date > unique(na.omit(df_base()$matchup_end))) {
+          unique(na.omit(df_base()$matchup_end))
+        } else {
+          cur_date
+        },
+        min = if (cur_date > unique(na.omit(df_base()$matchup_end))) {
+          unique(na.omit(df_base()$matchup_end))
+        } else {
+          unique(na.omit(df_base()$matchup_start))
+        },
+        max = unique(na.omit(df_base()$matchup_end))
+      )
+    }) |>
+      bindEvent(input$matchup)
+
+    # Eventually replace with modal
     observe({
       req(carry_thru()$fty_parameters_met())
 
@@ -339,7 +377,17 @@ mod_h2h_server <- function(id, carry_thru) {
           values_from = scheduled_to_play,
           values_fill = "0"
         ) |>
-        select(-starts_with("NA"))
+        select(-starts_with("NA")) |>
+        rowwise() |>
+        mutate(
+          games_remaining = if (cur_date > unique(na.omit(df_base()$matchup_end))) {
+            0
+          } else {
+            sum(as.numeric(str_remove(c_across((pin_ix() + 4):last_col()), "\\*")), na.rm = TRUE)
+          },
+          .before = if (all(is.na(df_base()$matchup_end_plus))) last_col() else last_col(2)
+        ) |>
+        ungroup()
     })
 
     df_tbl_sum <- reactive({
@@ -349,7 +397,47 @@ mod_h2h_server <- function(id, carry_thru) {
         summarise(across(contains("/"), \(x) sum(as.numeric(x), na.rm = TRUE)), .by = competitor) |>
         arrange(desc(competitor)) |>
         rename(player_team = competitor) |>
-        mutate(player_name = NA, .after = player_team)
+        mutate(player_name = NA, .after = player_team) |>
+        rowwise() |>
+        mutate(
+          games_remaining = if (cur_date > unique(na.omit(df_base()$matchup_end))) {
+            0
+          } else {
+            sum(as.numeric(str_remove(c_across((pin_ix() + 2):last_col()), "\\*")), na.rm = TRUE)
+          },
+          .before = if (all(is.na(df_base()$matchup_end_plus))) last_col() else last_col(2)
+        ) |>
+        ungroup() |>
+        mutate(grey_date = NA_Date_)
+    })
+
+    pin_ix <- reactive({
+      req(df_base())
+      df_base() |>
+        distinct(game_date) |>
+        na.omit() |>
+        pull(game_date) |>
+        sort() |>
+        detect_index(\(x) x == input$pin_date)
+    }) |>
+      bindEvent(input$pin_date)
+
+    df_grey_player <- reactive({
+      req(df_base())
+
+      # past roster
+      df_base() |>
+        filter(tense == "past") |>
+        slice_max(game_date, by = player_id) |>
+        summarise(grey_date = max(game_date), .by = player_id) |>
+        anti_join(
+          # Current Roster
+          pluck(dfs_fty_roster, as.character(carry_thru()$selected$league_id)) |>
+            filter(competitor_id %in% c(carry_thru()$selected$competitor_id, opponent_id())) |>
+            slice_max(assigned_date) |>
+            select(player_id),
+          by = join_by(player_id)
+        )
     })
 
     # Plot -------------------------------------------------------------------
@@ -357,20 +445,15 @@ mod_h2h_server <- function(id, carry_thru) {
     output$stat_plot <- renderPlotly({
       req(df_plt())
 
-      df <- df_plt()
-
       ggplotly(
-        df |>
+        df_plt() |>
           ggplot(aes(x = name, y = value, fill = competitor, text = label)) +
           geom_col(position = "fill") +
           geom_hline(aes(yintercept = 0.5)) +
           # scale_y_continuous(labels = scales::label_percent()) +
           scale_fill_brewer(type = "qual", palette = "Set2", direction = -1) +
           theme_bw() +
-          labs(
-            x = NULL,
-            y = NULL
-          ),
+          labs(x = NULL, y = NULL),
         tooltip = "text"
       ) |>
         layout(hovermode = "x") |>
@@ -382,11 +465,10 @@ mod_h2h_server <- function(id, carry_thru) {
     output$game_table_sum <- renderReactable({
       req(df_tbl_sum())
 
-      df <- df_tbl_sum()
-      col_fmt <- game_tbl_col_fmt(df, "sum")
+      col_fmt <- game_tbl_col_fmt(df_tbl_sum(), input$pin_date, unique(na.omit(df_base()$matchup_end)), "sum")
 
       reactable(
-        df,
+        df_tbl_sum(),
         pagination = FALSE,
         bordered = TRUE,
         style = list(border = "1px solid #000000"),
@@ -404,8 +486,10 @@ mod_h2h_server <- function(id, carry_thru) {
         df_tbl(),
         competitor ==
           pluck(ls_fty_lookup, "cp_id_to_name", as.character(carry_thru()$selected$league_id), input$competitor)
-      )
-      col_fmt <- game_tbl_col_fmt(df)
+      ) |>
+        left_join(df_grey_player(), by = join_by(player_id))
+
+      col_fmt <- game_tbl_col_fmt(df, input$pin_date, unique(na.omit(df_base()$matchup_end)))
 
       reactable(
         df,
