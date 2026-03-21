@@ -15,10 +15,13 @@ game_tbl_col_fmt <- function(df, dt, mup_end, type = "player") {
       header = tags$span(nm[1], tags$br(), nm[2]),
       style = function(value, index) {
         if (
-          tryCatch(
-            parse_date_time(x, orders = "%a (%d/%m)") > coalesce(df$grey_date[index], as.Date("2999-01-01")),
-            warning = \(w) FALSE
-          )
+          type == "player" &&
+            (parse_date_time(x, orders = "%a (%d/%m)") < coalesce(df$min_grey_date[index], as.Date("1000-01-01")) |
+              parse_date_time(x, orders = "%a (%d/%m)") > coalesce(df$max_grey_date[index], as.Date("3000-01-01")))
+          # tryCatch(
+          #   parse_date_time(x, orders = "%a (%d/%m)") > coalesce(df$grey_date[index], as.Date("2999-01-01")),
+          #   warning = \(w) FALSE
+          # )
         ) {
           list(background = "#d7d7d5", color = "#d7d7d5")
         } else if (str_detect(value, "\\*") | value > 10) {
@@ -37,7 +40,8 @@ game_tbl_col_fmt <- function(df, dt, mup_end, type = "player") {
     header = tags$span("Games", tags$br(), "Remaining"),
     style = list(background = "#96e5cbeb")
   )
-  col_fmt[["grey_date"]] <- colDef(show = FALSE)
+  col_fmt[["min_grey_date"]] <- colDef(show = FALSE)
+  col_fmt[["max_grey_date"]] <- colDef(show = FALSE)
   col_fmt[["competitor"]] <- colDef(show = FALSE)
   col_fmt[["player_id"]] <- colDef(show = FALSE)
   col_fmt[["player_name"]] <- colDef(

@@ -146,6 +146,44 @@ mod_league_overview_server <- function(id, carry_thru) {
     output$tbl_recent_activity <- renderReactable({
       req(df_tbl())
 
+      col_fmt <- list(
+        player = colDef(name = "Player"),
+        competitor_id = colDef(show = FALSE),
+        competitor_name = colDef(
+          name = "Competitor",
+          filterInput = \(values, name) {
+            tags$select(
+              onchange = sprintf(
+                "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+                name
+              ),
+              tags$option(value = "", ""),
+              lapply(unique(values), tags$option),
+              "aria-label" = sprintf("Filter %s", name),
+              style = "width: 100%; height: 28px;"
+            )
+          }
+        ),
+        action = colDef(
+          name = "Action",
+          filterInput = \(values, name) {
+            tags$select(
+              onchange = sprintf(
+                "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+                name
+              ),
+              tags$option(value = "", ""),
+              lapply(unique(values), tags$option),
+              "aria-label" = sprintf("Filter %s", name),
+              style = "width: 100%; height: 28px;"
+            )
+          }
+        ),
+        timestamp = colDef(name = "Time (EST)", cell = \(value) {
+          format(value, "%a %d/%m %H:%M", tz = "America/New_York")
+        })
+      )
+
       reactable(
         df_tbl(),
         pagination = FALSE,
@@ -155,15 +193,8 @@ mod_league_overview_server <- function(id, carry_thru) {
         filterable = TRUE,
         defaultSorted = list(timestamp = "desc"),
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
-        columns = list(
-          competitor_id = colDef(show = FALSE),
-          competitor_name = colDef(name = "Competitor"),
-          player = colDef(name = "Player"),
-          action = colDef(name = "Action"),
-          timestamp = colDef(name = "Time (EST)", cell = \(value) {
-            format(value, "%a %d/%m %H:%M", tz = "America/New_York")
-          })
-        )
+        columns = col_fmt,
+        elementId = "league-overview-table"
       )
     })
   })
@@ -183,6 +214,7 @@ library(stringr)
 library(purrr)
 library(dplyr)
 library(tidyr)
+library(reactable)
 
 load("data/dfs_league_overview.rda")
 load("data/dfs_fty_recent_activity.rda")

@@ -18,7 +18,7 @@ dfs_league_overview <-
       ) |>
       pivot_longer(
         matches(paste(df_fty_cats$nba_category, collapse = "|")),
-        names_to = c("category", ".value"), # potentially change category to stat
+        names_to = c("category", ".value"),
         names_sep = "-"
       ) |>
       inner_join(
@@ -32,7 +32,8 @@ dfs_league_overview <-
         all_cat = sum(perc_rank, na.rm = TRUE),
         all_cat_text = paste(all_cat_text, collapse = "\n"),
         .by = c(league_id, competitor_id, matchup)
-      ),
+      ) |>
+      mutate(all_cat_text = paste("<b>Total -", round(all_cat, 2), "</b>", "\n", all_cat_text)),
     by = join_by(league_id, competitor_id, matchup)
   ) |>
   mutate(

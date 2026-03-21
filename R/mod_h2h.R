@@ -408,7 +408,7 @@ mod_h2h_server <- function(id, carry_thru) {
           .before = if (all(is.na(df_base()$matchup_end_plus))) last_col() else last_col(2)
         ) |>
         ungroup() |>
-        mutate(grey_date = NA_Date_)
+        mutate(min_grey_date = NA_Date_, max_grey_date = NA_Date_)
     })
 
     pin_ix <- reactive({
@@ -422,25 +422,47 @@ mod_h2h_server <- function(id, carry_thru) {
     }) |>
       bindEvent(input$pin_date)
 
+    # Potentially turn this into a static df - haven't thought it thru yet
     df_grey_player <- reactive({
       req(df_base())
 
       # past roster
       df_base() |>
         filter(tense == "past") |>
-        slice_max(game_date, by = player_id) |>
-        summarise(grey_date = max(game_date), .by = player_id) |>
-        anti_join(
+        summarise(
+          min_grey_date = min(game_date),
+          max_grey_date = max(game_date),
+          .by = player_id
+        ) |>
+        inner_join(
           # Current Roster
           pluck(dfs_fty_roster, as.character(carry_thru()$selected$league_id)) |>
             filter(
               competitor_id %in% c(carry_thru()$selected$competitor_id, opponent_id()),
               matchup_period == as.integer(input$matchup)
             ) |>
-            slice_max(assigned_date) |>
-            select(player_id),
+            mutate(max_assigned_date = max(assigned_date)) |>
+            filter(
+              min(assigned_date) != matchup_start |
+                max(assigned_date) != max_assigned_date,
+              .by = player_id
+            ) |>
+            distinct(player_id, matchup_start, max_assigned_date),
           by = join_by(player_id)
-        )
+        ) |>
+        mutate(
+          min_grey_date = if_else(
+            min_grey_date == matchup_start,
+            NA_Date_,
+            min_grey_date
+          ),
+          max_grey_date = if_else(
+            between(max_grey_date, max_assigned_date - 1, max_assigned_date),
+            NA_Date_,
+            max_grey_date
+          )
+        ) |>
+        select(-c(matchup_start, max_assigned_date))
     })
 
     # Plot -------------------------------------------------------------------
