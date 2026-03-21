@@ -10,19 +10,11 @@ mod_league_overview_ui <- function(id) {
   ns <- NS(id)
   tagList(
     tags$head(
-      tags$style(HTML(
-        "
-          .selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}
-        "
-      ))
+      tags$style(HTML(".selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}"))
     ),
     layout_sidebar(
       sidebar = sidebar(
-        selectInput(
-          ns("fty_lg_ov_cat"),
-          "Category",
-          choices = character(0)
-        ),
+        selectInput(ns("fty_lg_ov_cat"), "Category", choices = character(0)),
         switchInput(ns("fty_lg_ov_rank_toggle"), value = TRUE, onLabel = "Rank", offLabel = "Value", size = "small"),
         switchInput(ns("fty_lg_ov_cum_toggle"), value = TRUE, onLabel = "W2W", offLabel = "Cum", size = "small"),
         checkboxInput(ns("fty_lg_ov_just_h2h"), "Just H2H")
@@ -88,7 +80,7 @@ mod_league_overview_server <- function(id, carry_thru) {
         df_lo() |>
           ggplot(aes(x = matchup_sigmoid, y = !!sym(plot_col), colour = competitor_name)) +
           geom_line(linewidth = 0.5) +
-          geom_point(data = df_lo_pt(), size = 2) +
+          geom_point(aes(text = !!sym(paste0(str_remove(plot_col, "_rank"), "_text"))), data = df_lo_pt(), size = 2) +
           scale_x_continuous(breaks = sort(unique(df_lo_pt()$matchup)), labels = sort(unique(df_lo_pt()$matchup))) +
           labs(
             title = paste("Competitor Category Ranking:", input$fty_lg_ov_cat),
@@ -118,8 +110,15 @@ mod_league_overview_server <- function(id, carry_thru) {
         plt <- plt + scale_y_reverse(n.breaks = length(unique(df_lo()$competitor_id)))
       }
 
-      plt <- ggplotly(plt) |>
-        style(hoverinfo = "none", traces = 0:length(unique(df_lo()$competitor_id))) |>
+      n_competitors <- length(unique(df_lo()$competitor_id))
+      plt <- ggplotly(plt, tooltip = "text") |>
+        # Suppress tooltips on line traces (first n traces), keep points
+        style(hoverinfo = "none", traces = seq_len(n_competitors)) |>
+        # Apply hovertemplate to point traces so HTML renders
+        style(
+          hovertemplate = ~ paste0(fg3_m_text, "<extra></extra>"),
+          traces = seq_len(n_competitors) + n_competitors
+        ) |>
         layout(xaxis = list(fixedrange = TRUE), yaxis = list(fixedrange = TRUE)) |>
         rangeslider(
           start = ifelse(!input$fty_lg_ov_cum_toggle, 1, max(df_lo_pt()$matchup) - 5.1),
@@ -141,6 +140,8 @@ mod_league_overview_server <- function(id, carry_thru) {
       }
       plt
     })
+
+    # Table ------------------------------------------------------------------
 
     output$tbl_recent_activity <- renderReactable({
       req(df_tbl())
@@ -174,33 +175,35 @@ mod_league_overview_server <- function(id, carry_thru) {
 ## To be copied in the server
 # mod_league_overview_server("league_overview_1")
 
-# library(shiny)
-# library(bslib)
-# library(shinyWidgets)
-# library(plotly)
-# library(stringr)
-# library(purrr)
-# library(dplyr)
-# library(tidyr)
-# load("data/dfs_league_overview.rda")
-# load("data/dfs_recent_activity.rda")
-# load("data/ls_lo_lg_cats.rda")
+library(shiny)
+library(bslib)
+library(shinyWidgets)
+library(plotly)
+library(stringr)
+library(purrr)
+library(dplyr)
+library(tidyr)
 
-# ui <- page_fluid(
-#   mod_league_overview_ui("league_overview_1")
-# )
+load("data/dfs_league_overview.rda")
+load("data/dfs_fty_recent_activity.rda")
+load("data/ls_lo_lg_cats.rda")
 
-# server <- function(input, output, session) {
-#   carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       league_id = 95537,
-#       competitor_name = "britney_spears",
-#       opponent_name = "Only Franz"
-#     )
-#   ))
 
-#   mod_league_overview_server("league_overview_1", carry_thru)
-# }
+ui <- page_fluid(
+  mod_league_overview_ui("league_overview_1")
+)
 
-# shinyApp(ui, server)
+server <- function(input, output, session) {
+  carry_thru <- reactiveVal(list(
+    fty_parameters_met = reactiveVal(TRUE),
+    selected = reactiveValues(
+      league_id = 95537,
+      competitor_name = "britney_spears",
+      opponent_name = "Only Franz"
+    )
+  ))
+
+  mod_league_overview_server("league_overview_1", carry_thru)
+}
+
+shinyApp(ui, server)

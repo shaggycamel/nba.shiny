@@ -433,7 +433,10 @@ mod_h2h_server <- function(id, carry_thru) {
         anti_join(
           # Current Roster
           pluck(dfs_fty_roster, as.character(carry_thru()$selected$league_id)) |>
-            filter(competitor_id %in% c(carry_thru()$selected$competitor_id, opponent_id())) |>
+            filter(
+              competitor_id %in% c(carry_thru()$selected$competitor_id, opponent_id()),
+              matchup_period == as.integer(input$matchup)
+            ) |>
             slice_max(assigned_date) |>
             select(player_id),
           by = join_by(player_id)

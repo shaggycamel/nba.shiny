@@ -7,11 +7,6 @@
 #' @noRd
 #'
 game_tbl_col_fmt <- function(df, dt, mup_end, type = "player") {
-  print("pin")
-  print(dt)
-  print("end")
-  print(mup_end)
-
   col_fmt <- map(set_names(str_subset(colnames(df), "\\/")), \(x) {
     nm <- str_split_1(x, " ")
     colDef(
