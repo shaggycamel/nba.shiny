@@ -244,7 +244,7 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         ),
         columns = col_fmt,
         onClick = "expand",
-        details = function(ix) {
+        details = \(ix) {
           pl_tm <- if (input$log_inj_toggle) df$player[ix] else df$team[ix]
           pl_id <- df$player_id[ix]
           pl_or_tm_hf_header <- paste(if (input$log_inj_toggle) "Player" else "Team", "not found...")

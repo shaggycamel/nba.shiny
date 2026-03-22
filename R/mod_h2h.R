@@ -25,8 +25,8 @@ mod_h2h_ui <- function(id) {
         ),
         dateInput(ns("pin_date"), NULL),
         selectInput(ns("hl_player"), "Highlight Player", choices = character(0), multiple = TRUE),
-        selectInput(ns("log_config"), "Log Filter Config", choices = character(0), size = 4, selectize = FALSE),
-        actionButton(ns("snapshot_config"), "Snapshot config"),
+        # selectInput(ns("log_config"), "Log Filter Config", choices = character(0), size = 4, selectize = FALSE),
+        # actionButton(ns("snapshot_config"), "Snapshot config"),
       ),
       card(
         height = 1400,
@@ -36,14 +36,15 @@ mod_h2h_ui <- function(id) {
           full_screen = TRUE,
           min_height = 200,
           max_height = 650,
-          tagList(
-            tags$div(
-              style = "overflow-x: auto; white-space: nowrap; padding: 5px;",
-              tags$div(style = "width: 1200px;", reactableOutput(ns("game_table_sum"))),
-              br(),
-              tags$div(style = "width: 1200px;", reactableOutput(ns("game_table_player")))
-            )
-          )
+          # tagList(
+          #   tags$div(
+          #     style = "overflow-x: auto; white-space: nowrap; padding: 5px;",
+          #     tags$div(style = "width: 1200px;", reactableOutput(ns("game_table_sum"))),
+          #     br(),
+          #     tags$div(style = "width: 1200px;", reactableOutput(ns("game_table_player")))
+          #   )
+          # )
+          reactableOutput(ns("game_table"))
         )
       ),
       fillable = TRUE,
@@ -198,22 +199,23 @@ mod_h2h_server <- function(id, carry_thru) {
     }) |>
       bindEvent(input$add_player, input$ex_player)
 
-    observe({
-      lst(
-        "competitor" = input$competitor,
-        "matchup" = input$matchup,
-        "window" = input$window,
-        "ex_player" = input$ex_player,
-        "add_player" = input$add_player,
-        "future_only" = input$future_only,
-        "future_from_tomorrow" = input$future_from_tomorrow,
-        "hl_player" = input$hl_player
-      )
-    }) |>
-      bindEvent(input$snapshot_config)
+    # observe({
+    #   lst(
+    #     "competitor" = input$competitor,
+    #     "matchup" = input$matchup,
+    #     "window" = input$window,
+    #     "ex_player" = input$ex_player,
+    #     "add_player" = input$add_player,
+    #     "future_only" = input$future_only,
+    #     "future_from_tomorrow" = input$future_from_tomorrow,
+    #     "hl_player" = input$hl_player
+    #   )
+    # }) |>
+    #   bindEvent(input$snapshot_config)
 
     # Data prep --------------------------------------------------------------
 
+    # Create generic function to calc this
     opponent_id <- reactiveVal()
     observe({
       req(carry_thru()$fty_parameters_met())
@@ -356,7 +358,7 @@ mod_h2h_server <- function(id, carry_thru) {
     })
 
     df_tbl <- reactive({
-      req(df_base())
+      req(df_base(), df_grey_player())
 
       df_base() |>
         arrange(game_date) |>
@@ -387,7 +389,8 @@ mod_h2h_server <- function(id, carry_thru) {
           },
           .before = if (all(is.na(df_base()$matchup_end_plus))) last_col() else last_col(2)
         ) |>
-        ungroup()
+        ungroup() |>
+        left_join(df_grey_player(), by = join_by(player_id))
     })
 
     df_tbl_sum <- reactive({
@@ -423,6 +426,7 @@ mod_h2h_server <- function(id, carry_thru) {
       bindEvent(input$pin_date)
 
     # Potentially turn this into a static df - haven't thought it thru yet
+    # Haven't tested on whehter players can be added/excluded and still greyed out...
     df_grey_player <- reactive({
       req(df_base())
 
@@ -487,52 +491,94 @@ mod_h2h_server <- function(id, carry_thru) {
 
     # Game Table -------------------------------------------------------------
 
-    output$game_table_sum <- renderReactable({
-      req(df_tbl_sum())
+    output$game_table <- renderReactable({
+      req(df_tbl_sum(), df_tbl(), df_grey_player())
 
-      col_fmt <- game_tbl_col_fmt(df_tbl_sum(), input$pin_date, unique(na.omit(df_base()$matchup_end)), "sum")
+      col_fmt <- game_tbl_col_fmt(df_tbl(), input$pin_date, unique(na.omit(df_base()$matchup_end)))
+      col_fmt_sum <- game_tbl_col_fmt(df_tbl_sum(), input$pin_date, unique(na.omit(df_base()$matchup_end)), "sum")
 
       reactable(
         df_tbl_sum(),
         pagination = FALSE,
         bordered = TRUE,
         style = list(border = "1px solid #000000"),
+        rowStyle = list(borderBottom = "1px solid #000000"),
+        theme = reactableTheme(headerStyle = list(borderBottom = "1px solid #000000")),
         highlight = TRUE,
         sortable = FALSE,
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
-        columns = col_fmt,
-      )
-    })
-
-    output$game_table_player <- renderReactable({
-      req(df_tbl())
-
-      df <- filter(
-        df_tbl(),
-        competitor ==
-          pluck(ls_fty_lookup, "cp_id_to_name", as.character(carry_thru()$selected$league_id), input$competitor)
-      ) |>
-        left_join(df_grey_player(), by = join_by(player_id))
-
-      col_fmt <- game_tbl_col_fmt(df, input$pin_date, unique(na.omit(df_base()$matchup_end)))
-
-      reactable(
-        df,
-        pagination = FALSE,
-        bordered = TRUE,
-        style = list(border = "1px solid #000000"),
-        highlight = TRUE,
-        theme = reactableTheme(headerStyle = list(display = "none")),
-        defaultSorted = list(player_team = "asc", player_name = "asc"),
-        defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
-        columns = col_fmt,
-        rowStyle = function(index) {
-          if (df$player_id[index] %in% as.numeric(input$hl_player)) {
-            list(backgroundColor = "#ffef9dff", fontWeight = "bold") # Light yellow highlight
-          }
+        columns = col_fmt_sum,
+        defaultExpanded = TRUE,
+        details = \(ix) {
+          tags$div(
+            style = "margin-left: 45px; margin-top: 10px; margin-bottom: 30px;",
+            reactable(
+              filter(df_tbl(), competitor == df_tbl_sum()$player_team[ix]),
+              pagination = FALSE,
+              bordered = TRUE,
+              style = list(border = "1px solid #000000"),
+              highlight = TRUE,
+              theme = reactableTheme(headerStyle = list(display = "none")),
+              defaultSorted = list(player_team = "asc", player_name = "asc"),
+              defaultColDef = colDef(headerStyle = list(background = "#cce5ff")), # Not sure if needed
+              columns = col_fmt,
+              rowStyle = function(index) {
+                if (df_tbl()$player_id[index] %in% as.numeric(input$hl_player)) {
+                  list(backgroundColor = "#ffef9dff", fontWeight = "bold") # Light yellow highlight
+                }
+              },
+            )
+          )
         }
       )
     })
+
+    # output$game_table_sum <- renderReactable({
+    #   req(df_tbl_sum())
+
+    #   col_fmt <- game_tbl_col_fmt(df_tbl_sum(), input$pin_date, unique(na.omit(df_base()$matchup_end)), "sum")
+
+    #   reactable(
+    #     df_tbl_sum(),
+    #     pagination = FALSE,
+    #     bordered = TRUE,
+    #     style = list(border = "1px solid #000000"),
+    #     highlight = TRUE,
+    #     sortable = FALSE,
+    #     defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
+    #     columns = col_fmt,
+    #   )
+    # })
+
+    # output$game_table_player <- renderReactable({
+    #   req(df_tbl())
+
+    #   df <- filter(
+    #     df_tbl(),
+    #     competitor ==
+    #       pluck(ls_fty_lookup, "cp_id_to_name", as.character(carry_thru()$selected$league_id), input$competitor)
+    #   ) |>
+    #     left_join(df_grey_player(), by = join_by(player_id))
+
+    #   col_fmt <- game_tbl_col_fmt(df, input$pin_date, unique(na.omit(df_base()$matchup_end)))
+
+    #   reactable(
+    #     df,
+    #     pagination = FALSE,
+    #     bordered = TRUE,
+    #     style = list(border = "1px solid #000000"),
+    #     highlight = TRUE,
+    #     theme = reactableTheme(headerStyle = list(display = "none")),
+    #     defaultSorted = list(player_team = "asc", player_name = "asc"),
+    #     defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
+    #     columns = col_fmt,
+    #     rowStyle = function(index) {
+    #       if (df$player_id[index] %in% as.numeric(input$hl_player)) {
+    #         list(backgroundColor = "#ffef9dff", fontWeight = "bold") # Light yellow highlight
+    #       }
+    #     }
+    #   )
+    # })
   })
 }
 
