@@ -29,9 +29,12 @@ golem::add_module(name = "player_comparison", with_test = TRUE)
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
-golem::add_fct("calc_z_pcts", with_test = TRUE)
-golem::add_fct("reverse_plotly_legend_labels", with_test = TRUE)
-golem::add_fct("game_tbl_col_fmt", with_test = TRUE)
+golem::add_fct("base_data_prep", module = "h2h", with_test = TRUE)
+golem::add_fct("plot_data_prep", module = "h2h", with_test = TRUE)
+golem::add_fct("table_data_prep", module = "h2h", with_test = TRUE)
+golem::add_fct("game_tbl_col_fmt", module = "h2h", with_test = TRUE)
+golem::add_utils("get_opponent", with_test = TRUE)
+golem::add_utils("calc_z_pcts", with_test = TRUE)
 golem::add_utils("database", with_test = TRUE)
 
 ## External resources

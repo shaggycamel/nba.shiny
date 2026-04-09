@@ -34,41 +34,42 @@ mod_league_overview_ui <- function(id) {
 #'
 #' @noRd
 #'
-mod_league_overview_server <- function(id, carry_thru) {
+mod_league_overview_server <- function(id, rv_carry_thru) {
   moduleServer(id, function(input, output, session) {
     # Update categories ------------------------------------------------------
 
     observe({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru()$fty_parameters_met())
       updateSelectInput(
         session = session,
         inputId = "fty_lg_ov_cat",
-        choices = pluck(ls_lo_lg_cats, as.character(carry_thru()$selected$league_id))
+        choices = pluck(ls_lo_lg_cats, as.character(rv_carry_thru()$selected$league_id))
       )
     }) |>
-      bindEvent(carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
+      bindEvent(rv_carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
 
     # Data prep --------------------------------------------------------------
 
-    df_lo <- reactive(pluck(dfs_league_overview, as.character(carry_thru()$selected$league_id)))
+    df_lo <- reactive(pluck(dfs_league_overview, as.character(rv_carry_thru()$selected$league_id)))
     df_lo_pt <- reactive(filter(df_lo(), as.integer(matchup_sigmoid) == matchup_sigmoid))
+    opponent <- reactive(get_opponent(rv_carry_thru, rv_carry_thru()$selected$cur_matchup_period))
 
     df_tbl <- reactive({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru()$fty_parameters_met())
 
       if (input$fty_lg_ov_just_h2h) {
-        pluck(dfs_fty_recent_activity, as.character(carry_thru()$selected$league_id)) |>
-          filter(competitor_id %in% c(carry_thru()$selected$competitor_id, carry_thru()$selected$opponent_id))
+        pluck(dfs_fty_recent_activity, as.character(rv_carry_thru()$selected$league_id)) |>
+          filter(competitor_id %in% c(rv_carry_thru()$selected$competitor_id, opponent()$id))
       } else {
-        pluck(dfs_fty_recent_activity, as.character(carry_thru()$selected$league_id))
+        pluck(dfs_fty_recent_activity, as.character(rv_carry_thru()$selected$league_id))
       }
     }) |>
-      bindEvent(carry_thru()$fty_parameters_met(), input$fty_lg_ov_just_h2h)
+      bindEvent(rv_carry_thru()$fty_parameters_met(), input$fty_lg_ov_just_h2h)
 
     # Plot -------------------------------------------------------------------
 
     output$fty_lo_plt <- renderPlotly({
-      req(carry_thru()$fty_parameters_met(), df_lo())
+      req(rv_carry_thru()$fty_parameters_met(), df_lo())
 
       plot_col <- input$fty_lg_ov_cat
       if (input$fty_lg_ov_rank_toggle) {
@@ -132,7 +133,7 @@ mod_league_overview_server <- function(id, carry_thru) {
           1:length(plt$x$data),
           str_which(
             map_chr(plt$x$data, \(x) x$name),
-            paste0(carry_thru()$selected$competitor_name, "|", carry_thru()$selected$opponent_name)
+            paste0(rv_carry_thru()$selected$competitor_name, "|", opponent()$name)
           )
         )
 
@@ -220,22 +221,25 @@ load("data/dfs_league_overview.rda")
 load("data/dfs_fty_recent_activity.rda")
 load("data/ls_lo_lg_cats.rda")
 
+source("R/utils_get_opponent.R")
+
 
 ui <- page_fluid(
   mod_league_overview_ui("league_overview_1")
 )
 
 server <- function(input, output, session) {
-  carry_thru <- reactiveVal(list(
+  rv_carry_thru <- reactiveVal(list(
     fty_parameters_met = reactiveVal(TRUE),
     selected = reactiveValues(
-      league_id = 95537,
+      league_id = 1382487116,
       competitor_name = "britney_spears",
-      opponent_name = "Only Franz"
+      competitor_id = 6,
+      cur_matchup_period = 22
     )
   ))
 
-  mod_league_overview_server("league_overview_1", carry_thru)
+  mod_league_overview_server("league_overview_1", rv_carry_thru)
 }
 
 shinyApp(ui, server)

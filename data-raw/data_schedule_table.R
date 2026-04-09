@@ -1,3 +1,5 @@
+# FTY matchup weeks ------------------------------------------------------
+
 dfs_fty_nba_mup_weeks <-
   dfs_fty_schedule |>
   map(\(x) as_tibble(x)) |>
@@ -53,5 +55,7 @@ dfs_fty_nba_mup_weeks <-
       deframe()
   })
 
+
+# Write data -------------------------------------------------------------
 
 usethis::use_data(dfs_fty_nba_mup_weeks, overwrite = TRUE)

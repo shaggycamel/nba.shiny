@@ -51,7 +51,7 @@ mod_player_comparison_ui <- function(id) {
 #'
 #' @noRd
 #'
-mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
+mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -59,23 +59,23 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
 
     # On load...
     observe({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru()$fty_parameters_met())
 
       updateSelectizeInput(
         session,
         "excels_at_filter",
         choices = pluck(
           ls_lo_lg_cats,
-          as.character(carry_thru()$selected$league_id),
+          as.character(rv_carry_thru()$selected$league_id),
           "Categories"
         )
       )
     }) |>
-      bindEvent(carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
+      bindEvent(rv_carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
 
     # On team player switch...
     observe({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru()$fty_parameters_met())
 
       chs <- if (input$team_player_switch) {
         # When switch on Team
@@ -84,7 +84,7 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
         # When switch on Player
         ls <- dfs_player_comparison |>
           pluck(
-            as.character(carry_thru()$selected$league_id),
+            as.character(rv_carry_thru()$selected$league_id),
             as.character(input$window)
           ) |>
           filter(!is.na(player_id), !is.na(player_name)) |>
@@ -105,19 +105,19 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
       bindEvent(input$team_player_switch, input$free_agent_filter)
 
     observe({
-      req(copy_teams_trigger())
-      teams <- unname(ls_nba_teams[copy_teams_trigger()])
+      req(rv_copy_teams())
+      teams <- unname(ls_nba_teams[rv_copy_teams()])
       updateSwitchInput(session, "team_player_switch", value = TRUE)
       later(\() updateSelectInput(session, "team_player_names", selected = teams), delay = 0.3)
     }) |>
-      bindEvent(copy_teams_trigger())
+      bindEvent(rv_copy_teams())
 
     # Data reactivity --------------------------------------------------------
 
     # Relevant cats
     cats <- reactive({
       ls_lo_lg_cats |>
-        pluck(as.character(carry_thru()$select$league_id)) |>
+        pluck(as.character(rv_carry_thru()$select$league_id)) |>
         discard_at(\(x) x == "Overall") |>
         unlist(use.names = FALSE) |>
         discard(\(x) str_like(x, "%_pct"))
@@ -126,7 +126,7 @@ mod_player_comparison_server <- function(id, carry_thru, copy_teams_trigger) {
     df_comparison <- reactive({
       df <- dfs_player_comparison |>
         pluck(
-          as.character(carry_thru()$selected$league_id),
+          as.character(rv_carry_thru()$selected$league_id),
           as.character(input$window)
         ) |>
         filter(min >= input$minute_filter)
@@ -315,14 +315,14 @@ ui <- page_fluid(
 )
 
 server <- function(input, output, session) {
-  carry_thru <- reactiveVal(list(
+  rv_carry_thru <- reactiveVal(list(
     fty_parameters_met = reactiveVal(TRUE),
     selected = reactiveValues(
       league_id = 24608
     )
   ))
 
-  mod_player_comparison_server("player_comparison_1", carry_thru, reactiveVal(c("ATL" = 1610612737)))
+  mod_player_comparison_server("player_comparison_1", rv_carry_thru, reactiveVal(c("ATL" = 1610612737)))
 }
 
 shinyApp(ui, server)

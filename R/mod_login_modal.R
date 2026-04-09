@@ -30,8 +30,12 @@ mod_login_modal_server <- function(id) {
         selected$league_name <- input$fty_league_select
         selected$league_id <- pluck(ls_fty_lookup, "lg_name_to_id", selected$league_name)
         selected$platform <- pluck(ls_fty_lookup, "lg_id_to_platform", as.character(selected$league_id))
+        selected$ui_date <- min(
+          max(pull(pluck(dfs_fty_schedule, as.character(selected$league_id)), matchup_end)),
+          cur_date
+        )
         selected$cur_matchup_period <- pluck(dfs_fty_schedule, as.character(selected$league_id)) |>
-          filter(matchup_start <= cur_date, matchup_end >= cur_date) |>
+          filter(matchup_start <= selected$ui_date, matchup_end >= selected$ui_date) |>
           pull(matchup_period) |>
           pluck(1)
         selected$competitor_name <- input$fty_competitor_select
@@ -40,15 +44,6 @@ mod_login_modal_server <- function(id) {
           "cp_name_to_id",
           as.character(selected$league_id),
           selected$competitor_name
-        )
-        selected$opponent_id <- pluck(dfs_fty_schedule, as.character(selected$league_id)) |>
-          filter(competitor_id == selected$competitor_id, matchup_start <= cur_date, matchup_end >= cur_date) |>
-          pull(opponent_id)
-        selected$opponent_name <- pluck(
-          ls_fty_lookup,
-          "cp_id_to_name",
-          as.character(selected$league_id),
-          as.character(selected$opponent_id)
         )
         fty_parameters_met(TRUE)
         removeModal()

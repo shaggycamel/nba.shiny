@@ -1,3 +1,5 @@
+# H2H Past ---------------------------------------------------------------
+
 dfs_h2h_past <- dfs_fty_roster |>
   list_rbind(names_to = "league_id") |>
   filter(assigned_date < cur_date) |>
@@ -33,6 +35,8 @@ dfs_h2h_past <- dfs_fty_roster |>
   deframe() |>
   map(\(x) map(deframe(x), \(y) deframe(y)))
 
+
+# H2H Today and Future ---------------------------------------------------
 
 dfs_today_future_generation <- function(timeframe) {
   #
@@ -148,7 +152,8 @@ dfs_h2h_today <- dfs_today_future_generation("today")
 dfs_h2h_future <- dfs_today_future_generation("future")
 
 
-# Write data
+# Write data -------------------------------------------------------------
+
 usethis::use_data(
   dfs_h2h_past,
   dfs_h2h_today,

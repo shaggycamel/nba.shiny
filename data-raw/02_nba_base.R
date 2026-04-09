@@ -49,6 +49,8 @@ df_nba_schedule <-
 
 # Season segments --------------------------------------------------------
 
+# Might need to do work here when season ends
+
 df_nba_season_segments <-
   tbl(db_con(), I("nba.nba_season_segments_vw")) |>
   filter(season >= prev_season) |>
