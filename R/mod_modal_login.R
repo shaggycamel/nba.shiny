@@ -6,7 +6,7 @@
 #'
 #' @noRd
 #'
-mod_login_modal_ui <- function(id) {
+mod_modal_login_ui <- function(id) {
   ns <- NS(id)
 
   tagList(
@@ -16,7 +16,7 @@ mod_login_modal_ui <- function(id) {
 
 #' @noRd
 #'
-mod_login_modal_server <- function(id) {
+mod_modal_login_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -134,7 +134,7 @@ mod_login_modal_server <- function(id) {
 }
 
 ## To be copied in the server
-# mod_login_modal_server("login_modal_1")
+# mod_modal_login_server("modal_login_1")
 
 # library(shiny)
 # library(bslib)
@@ -143,11 +143,11 @@ mod_login_modal_server <- function(id) {
 # load("data/ls_fty_lookup.rda")
 
 # ui <- page_fluid(
-#   mod_login_modal_ui("login_modal_1")
+#   mod_modal_login_ui("modal_login_1")
 # )
 
 # server <- function(input, output, session) {
-#   mod_login_modal_server("login_modal_1")
+#   mod_modal_login_server("modal_login_1")
 # }
 
 # shinyApp(ui, server)

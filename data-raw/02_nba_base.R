@@ -1,7 +1,7 @@
 # Player box score -------------------------------------------------------
 
 df_nba_player_box_score <-
-  tbl(db_con(), I("nba.nba_player_box_score_vw_new")) |>
+  tbl(db_con(), I("nba.nba_player_box_score_vw")) |>
   filter(season >= prev_season, !is.na(player_id)) |>
   as_tibble() |>
   mutate(
@@ -31,7 +31,7 @@ df_nba_schedule <-
   complete(game_date = seq.Date(min(game_date), max(game_date), by = "day")) |>
   select(game_date) |>
   left_join(
-    tbl(db_con(), I("nba.nba_schedule_vw_new")) |>
+    tbl(db_con(), I("nba.nba_schedule_vw")) |>
       filter(season == cur_season, season_type == 'Regular Season') |>
       as_tibble(),
     by = join_by(game_date)
@@ -79,7 +79,7 @@ ls_nba_teams <- tbl(db_con(), I("nba.nba_teams_vw")) |>
 
 # Team roster ------------------------------------------------------------
 
-df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw_new")) |>
+df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))

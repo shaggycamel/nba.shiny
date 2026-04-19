@@ -16,10 +16,10 @@ mod_h2h_ui <- function(id) {
           checkboxInput(ns("future_only"), "Future"),
         ),
         radioButtons(ns("window"), "Rolling days", c(7, 15, 30), inline = TRUE),
-        actionButton(ns("alter_team"), "Alter Team"),
         dateInput(ns("pin_date"), NULL, weekstart = 1),
         selectInput(ns("hl_player"), "Highlight Player", choices = character(0), multiple = TRUE),
-        # selectInput(ns("log_config"), "Log Filter Config", choices = character(0), size = 4, selectize = FALSE),
+        actionButton(ns("alter_team"), "Alter Team"),
+        reactableOutput(ns("alter_team_table")),
         # actionButton(ns("snapshot_config"), "Snapshot config"),
       ),
       card(
@@ -137,23 +137,79 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     #   bindEvent(input$add_player, input$ex_player)
 
     observe({
+      req(df_base())
+
+      # Update modal data
       rv_alter_team_modal_vals(list(
-        roster = pluck(dfs_fty_roster, rv_carry_thru()$selected$league_id) |>
+        roster = pluck(dfs_fty_roster, as.character(rv_carry_thru()$selected$league_id)) |>
           filter(competitor_id == rv_carry_thru()$selected$competitor_id) |>
-          slice_max(assigned_date) |> # May need to think of this somewhere...
+          slice_max(assigned_date) |>
           select(player_name, player_id) |>
           deframe(),
-        # Need to understand why pluck(1,1)
-        free_agents = pluck(dfs_h2h_future, rv_carry_thru()$selected$league_id, "free_agent", 1, 1) |>
-          select(player_name, player_id) |>
+        free_agents = pluck(
+          dfs_h2h_future,
+          as.character(rv_carry_thru()$selected$league_id),
+          "free_agent",
+          "free_agent",
+          "7"
+        ) |>
+          distinct(player_name, player_id) |>
           na.omit() |>
           deframe(),
-        ui_date = input$ui_date,
+        ui_date = input$pin_date,
         mup_end_date = unique(df_base()$matchup_end_date)
       ))
-      mod_alter_team_modal_server("alter_team_modal_1", rv_alter_team, rv_alter_team_modal_vals())
+
+      # Increment trigger to open modal — separate from data so updating
+      # roster/free_agents later won't accidentally reopen the modal
+      # rv_alter_team_trigger(rv_alter_team_trigger() + 1L)
     }) |>
       bindEvent(input$alter_team, ignoreInit = TRUE)
+
+    # Alter Team Table -------------------------------------------------------
+
+    output$alter_team_table <- renderReactable({
+      selected_players <- if (length(rv_alter_team) > 0) names(rv_alter_team) else NA_character_
+
+      df <- tibble(
+        key = selected_players,
+        action = str_split_i(selected_players, "-", 1),
+        player_name = str_split_i(selected_players, "-", 2),
+        delete = na_lgl
+      )
+
+      reactable(
+        df,
+        pagination = FALSE,
+        sortable = FALSE,
+        compact = TRUE,
+        columns = list(
+          key = colDef(show = FALSE),
+          action = colDef(name = "Action", maxWidth = 70),
+          player_name = colDef(name = "Player", minWidth = 120),
+          delete = colDef(
+            name = "",
+            maxWidth = 30,
+            sortable = FALSE,
+            cell = function(value, index) {
+              tags$button(
+                icon("xmark"),
+                class = "btn btn-danger btn-sm",
+                onclick = sprintf(
+                  "Shiny.setInputValue('%s', '%s', {priority: 'event'})",
+                  ns("delete_alter_team_key"),
+                  df$key[index]
+                )
+              )
+            }
+          )
+        )
+      )
+    })
+
+    # observeEvent(input$delete_alter_team_key, {
+    #   rv_alter_team[[input$delete_alter_team_key]] <- NULL
+    # })
 
     # Data prep --------------------------------------------------------------
 
@@ -165,12 +221,11 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     df_base <- reactive({
       req(opponent())
-      base_data_prep(input, rv_carry_thru()$selected, opponent)
+      base_data_prep(input, rv_carry_thru()$selected, opponent, rv_alter_team)
     })
 
     df_plt <- reactive({
       req(nrow(df_base()) > 0)
-      glimpse(df_base())
       plot_data_prep(df_base(), rv_carry_thru()$selected)
     })
 
@@ -294,7 +349,6 @@ load("data/ls_lo_lg_cats.rda")
 load("data/dfs_fty_schedule.rda")
 load("data/dfs_fty_roster.rda")
 load("data/dfs_h2h_past.rda")
-load("data/dfs_h2h_today.rda")
 load("data/dfs_h2h_future.rda")
 
 source("R/mod_h2h_fct_base_data_prep.R")
@@ -314,12 +368,15 @@ server <- function(input, output, session) {
       platform = "ESPN",
       league_id = 1382487116,
       competitor_id = 6,
-      cur_matchup_period = 19,
-      ui_date = as.Date("2026-03-02")
+      cur_matchup_period = 11,
+      ui_date = as.Date("2026-01-01")
     )
   ))
+  rv_alter_team <- reactiveValues()
+  rv_alter_team_modal_vals <- reactiveVal()
 
-  mod_h2h_server("h2h_1", rv_carry_thru)
+  mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals)
+  mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals)
 }
 
 shinyApp(ui, server)

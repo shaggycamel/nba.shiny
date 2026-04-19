@@ -38,7 +38,7 @@ dfs_h2h_past <- dfs_fty_roster |>
 
 # H2H Today and Future ---------------------------------------------------
 
-dfs_today_future_generation <- function(timeframe) {
+dfs_h2h_future_generation <- function() {
   #
   # fty roster & free agents
   df <- dfs_fty_roster |>
@@ -57,13 +57,7 @@ dfs_today_future_generation <- function(timeframe) {
     left_join(
       dfs_fty_schedule |>
         list_rbind(names_to = "league_id") |>
-        filter(
-          if (timeframe == "today") {
-            matchup_start <= cur_date & cur_date <= matchup_end
-          } else {
-            cur_date <= matchup_end
-          }
-        ) |>
+        filter(cur_date <= matchup_end) |>
         mutate(competitor_id = as.character(competitor_id)) |>
         select(league_id, platform, matchup_period, matchup_start, matchup_end, competitor_id, opponent_id),
       by = join_by(league_id, platform, competitor_id),
@@ -84,7 +78,7 @@ dfs_today_future_generation <- function(timeframe) {
     left_join(
       dfs_rolling_stats |>
         list_rbind(names_to = "window") |>
-        filter(if (timeframe == "today") game_date == cur_date else game_date > cur_date) |>
+        filter(game_date >= cur_date) |>
         select(
           window,
           player_id,
@@ -120,19 +114,18 @@ dfs_today_future_generation <- function(timeframe) {
 
   # Add matchup lookahead
   # Not sure how this will look when cur_date == matchup_end
-  if (timeframe == "future") {
-    df <- bind_rows(
-      df,
-      df |>
-        distinct(league_id, matchup_period, matchup_start, matchup_end) |>
-        mutate(matchup_end_plus = matchup_end + ddays(2)) |>
-        left_join(
-          select(df, -starts_with("matchup")),
-          by = join_by(league_id, matchup_end < game_date, matchup_end_plus >= game_date)
-        )
-      # select(-matchup_end_plus)
-    )
-  }
+  # THINK THIS CREATES DUPS
+  df <- bind_rows(
+    df,
+    df |>
+      distinct(league_id, matchup_period, matchup_start, matchup_end) |>
+      mutate(matchup_end_plus = matchup_end + ddays(2)) |>
+      left_join(
+        select(df, -starts_with("matchup")),
+        by = join_by(league_id, matchup_end < game_date, matchup_end_plus >= game_date)
+      )
+    # select(-matchup_end_plus)
+  )
 
   if (nrow(df) == 0) {
     df
@@ -147,16 +140,13 @@ dfs_today_future_generation <- function(timeframe) {
   }
 }
 
-# today/future
-dfs_h2h_today <- dfs_today_future_generation("today")
-dfs_h2h_future <- dfs_today_future_generation("future")
+dfs_h2h_future <- dfs_h2h_future_generation()
 
 
 # Write data -------------------------------------------------------------
 
 usethis::use_data(
   dfs_h2h_past,
-  dfs_h2h_today,
   dfs_h2h_future,
   overwrite = TRUE
 )
