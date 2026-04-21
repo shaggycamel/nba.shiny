@@ -17,14 +17,14 @@ mod_modal_alter_team_ui <- function(id) {
 #' alter_team_modal Server Functions
 #'
 #' @noRd
-mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_vals) {
+mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # Modal Scaffolding ------------------------------------------------------
 
     observe({
-      req(rv_alter_team_modal_vals())
+      # req(rv_alter_team_modal_vals)
 
       showModal(
         modalDialog(
@@ -37,9 +37,9 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
           dateInput(
             ns("action_date"),
             label = NULL,
-            value = rv_alter_team_modal_vals()$ui_date,
-            min = rv_alter_team_modal_vals()$ui_date,
-            max = rv_alter_team_modal_vals()$mup_end_date,
+            value = rv_alter_team_modal_vals$ui_date,
+            min = rv_alter_team_modal_vals$ui_date,
+            max = rv_alter_team_modal_vals$mup_end_date,
             weekstart = 1
           ),
 
@@ -67,7 +67,7 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
         )
       )
     }) |>
-      bindEvent(rv_alter_team_modal_vals())
+      bindEvent(rv_alter_team_trigger(), ignoreInit = TRUE)
 
     # Reactive player list ---------------------------------------------------
 
@@ -75,9 +75,9 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
       updateSelectInput(
         inputId = "player",
         choices = if (input$add_or_exclude) {
-          rv_alter_team_modal_vals()$free_agents
+          rv_alter_team_modal_vals$free_agents
         } else {
-          rv_alter_team_modal_vals()$roster
+          rv_alter_team_modal_vals$roster
         },
         selected = NA
       )
@@ -90,18 +90,18 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
       if (input$player != "") {
         rv_alter_team[[
           if (input$add_or_exclude) {
-            paste0("add-", names(keep(rv_alter_team_modal_vals()$free_agents, \(x) x == input$player)))
+            paste0("add-", names(keep(rv_alter_team_modal_vals$free_agents, \(x) x == input$player)))
           } else {
-            paste0("ex-", names(keep(rv_alter_team_modal_vals()$roster, \(x) x == input$player)))
+            paste0("ex-", names(keep(rv_alter_team_modal_vals$roster, \(x) x == input$player)))
           }
         ]] = lst(
           "action" = if (input$add_or_exclude) "add" else "ex",
           "action_date" = as.character(input$action_date), # Store as char to stop epoch storage
           "player_id" = as.integer(input$player),
           "player_name" = if (input$add_or_exclude) {
-            names(keep(rv_alter_team_modal_vals()$free_agents, \(x) x == input$player))
+            names(keep(rv_alter_team_modal_vals$free_agents, \(x) x == input$player))
           } else {
-            names(keep(rv_alter_team_modal_vals()$roster, \(x) x == input$player))
+            names(keep(rv_alter_team_modal_vals$roster, \(x) x == input$player))
           }
         )
 
@@ -147,8 +147,9 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
 # )
 
 # server <- function(input, output, session) {
+#   rv_alter_team_trigger <- reactiveVal(0L)
 #   rv_alter_team = reactiveValues()
-#   rv_alter_team_modal_vals <- reactiveVal(list(
+#   rv_alter_team_modal_vals <- reactiveValues(
 #     roster = pluck(dfs_h2h_future, "1382487116", "11", "6", "7") |>
 #       distinct(player_name, player_id) |>
 #       arrange(player_name) |>
@@ -159,12 +160,13 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
 #       deframe(),
 #     ui_date = as.Date("2026-01-01"),
 #     mup_end_date = as.Date("2026-01-04")
-#   ))
+#   )
 
 #   mod_modal_alter_team_server(
 #     "modal_alter_team_1",
 #     rv_alter_team,
-#     rv_alter_team_modal_vals
+#     rv_alter_team_modal_vals,
+#     rv_alter_team_trigger
 #   )
 # }
 

@@ -47,7 +47,7 @@ mod_h2h_ui <- function(id) {
 #'
 #' @noRd
 #'
-mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals) {
+mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -93,27 +93,25 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         max = unique(na.omit(df_base()$matchup_end))
       )
     }) |>
-      bindEvent(df_base(), once = TRUE)
+      bindEvent(df_base(), ignoreInit = FALSE)
 
     # Ongoing Date picker pin_date
-    # observe({
-    #   req(nrow(df_base()) > 0)
+    observe({
+      req(nrow(df_base()) > 0)
 
-    #   print(df_base())
-
-    #   updateDateInput(
-    #     session,
-    #     "pin_date",
-    #     value = if (unique(na.omit(df_base()$matchup_end)) <= rv_carry_thru()$selected$ui_date) {
-    #       unique(na.omit(df_base()$matchup_end))
-    #     } else {
-    #       unique(na.omit(df_base()$matchup_start))
-    #     },
-    #     min = unique(na.omit(df_base()$matchup_start)),
-    #     max = unique(na.omit(df_base()$matchup_end))
-    #   )
-    # }) |>
-    #   bindEvent(input$matchup)
+      updateDateInput(
+        session,
+        "pin_date",
+        value = if (max(na.omit(df_base()$matchup_end)) <= rv_carry_thru()$selected$ui_date) {
+          max(na.omit(df_base()$matchup_end))
+        } else {
+          min(na.omit(df_base()$matchup_start))
+        },
+        min = unique(na.omit(df_base()$matchup_start)),
+        max = unique(na.omit(df_base()$matchup_end))
+      )
+    }) |>
+      bindEvent(input$matchup, ignoreInit = TRUE)
 
     # observe({
     #   req(df_base())
@@ -137,32 +135,31 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     #   bindEvent(input$add_player, input$ex_player)
 
     observe({
-      req(df_base())
+      req(opponent())
 
       # Update modal data
-      rv_alter_team_modal_vals(list(
-        roster = pluck(dfs_fty_roster, as.character(rv_carry_thru()$selected$league_id)) |>
-          filter(competitor_id == rv_carry_thru()$selected$competitor_id) |>
-          slice_max(assigned_date) |>
-          select(player_name, player_id) |>
-          deframe(),
-        free_agents = pluck(
-          dfs_h2h_future,
-          as.character(rv_carry_thru()$selected$league_id),
-          "free_agent",
-          "free_agent",
-          "7"
-        ) |>
-          distinct(player_name, player_id) |>
-          na.omit() |>
-          deframe(),
-        ui_date = input$pin_date,
-        mup_end_date = unique(df_base()$matchup_end_date)
-      ))
+      rv_alter_team_modal_vals$roster <- df_base() |>
+        filter(competitor_id == as.integer(rv_carry_thru()$selected$competitor_id)) |>
+        distinct(player_name, player_id) |>
+        arrange(player_name) |>
+        deframe()
 
-      # Increment trigger to open modal — separate from data so updating
-      # roster/free_agents later won't accidentally reopen the modal
-      # rv_alter_team_trigger(rv_alter_team_trigger() + 1L)
+      rv_alter_team_modal_vals$free_agents <- dfs_h2h_future |>
+        pluck(as.character(rv_carry_thru()$selected$league_id), "free_agent", "free_agent", "7") |>
+        distinct(player_name, player_id) |>
+        anti_join(
+          df_base() |>
+            filter(competitor_id == as.integer(rv_carry_thru()$selected$competitor_id)) |>
+            distinct(player_name, player_id),
+          by = join_by(player_id)
+        ) |>
+        na.omit() |>
+        deframe()
+
+      rv_alter_team_modal_vals$ui_date <- input$pin_date
+      rv_alter_team_modal_vals$mup_end_date = unique(df_base()$matchup_end)
+
+      rv_alter_team_trigger(isolate(rv_alter_team_trigger()) + 1L)
     }) |>
       bindEvent(input$alter_team, ignoreInit = TRUE)
 
@@ -221,8 +218,10 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     df_base <- reactive({
       req(opponent())
+      print("base updating...")
       base_data_prep(input, rv_carry_thru()$selected, opponent, rv_alter_team)
-    })
+    }) |>
+      bindEvent(opponent(), reactiveValuesToList(rv_alter_team), ignoreInit = FALSE)
 
     df_plt <- reactive({
       req(nrow(df_base()) > 0)
@@ -254,7 +253,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         na.omit() |>
         pull(game_date) |>
         sort() |>
-        detect_index(\(x) x == input$pin_date)
+        detect_index(\(x) x == as.Date(input$pin_date))
     }) |>
       bindEvent(input$pin_date)
 
@@ -280,6 +279,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     # Game Table -------------------------------------------------------------
 
+    # SOMEWHERE THE DATA BEING FED INTO THIS BECOMES A LSIT
     output$game_table <- renderReactable({
       req(df_tbl_sum(), df_tbl(), df_grey_player())
 
@@ -356,6 +356,8 @@ source("R/mod_h2h_fct_plot_data_prep.R")
 source("R/mod_h2h_fct_table_data_prep.R")
 source("R/mod_h2h_fct_game_tbl_col_fmt.R")
 source("R/utils_get_opponent.R")
+source("R/mod_modal_alter_team.R")
+source("R/mod_h2h_fct_base_data_prep.R")
 
 ui <- page_fluid(
   mod_h2h_ui("h2h_1")
@@ -368,15 +370,16 @@ server <- function(input, output, session) {
       platform = "ESPN",
       league_id = 1382487116,
       competitor_id = 6,
-      cur_matchup_period = 11,
-      ui_date = as.Date("2026-01-01")
+      cur_matchup_period = 22,
+      ui_date = as.Date("2026-03-29")
     )
   ))
   rv_alter_team <- reactiveValues()
-  rv_alter_team_modal_vals <- reactiveVal()
+  rv_alter_team_modal_vals <- reactiveValues()
+  rv_alter_team_trigger <- reactiveVal(0L)
 
-  mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals)
-  mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals)
+  mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
+  mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
 }
 
 shinyApp(ui, server)

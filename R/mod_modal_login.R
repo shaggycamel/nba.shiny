@@ -79,57 +79,60 @@ mod_modal_login_server <- function(id) {
 
     # Modal UI structure.
     # # This needs to be defined in the server component.
-    showModal(
-      modalDialog(
-        tags$head(tags$style(HTML(".selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}"))),
+    observe({
+      showModal(
+        modalDialog(
+          tags$head(tags$style(HTML(".selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}"))),
 
-        # Select League
-        selectizeInput(
-          ns("fty_league_select"),
-          label = NULL,
-          choices = unique(df_fty_base$league_name),
-          options = list(
-            placeholder = "Select Fantasy League",
-            onInitialize = I("function(){this.setValue('');}")
-          ),
-          width = "100%"
-        ),
-
-        # Select Competitor
-        selectizeInput(
-          ns("fty_competitor_select"),
-          label = NULL,
-          choices = character(0),
-          options = list(
-            placeholder = "Select Fantasy Competitor",
-            onInitialize = I("function(){this.setValue('');}")
-          ),
-          width = "100%"
-        ),
-
-        span(textOutput(ns("login_messages")), style = "color:red"),
-        footer = tagList(
-          actionButton(
-            ns("fty_abort"),
+          # Select League
+          selectizeInput(
+            ns("fty_league_select"),
             label = NULL,
-            icon = icon("square-xmark"),
-            style = "color:#FFF; background-color:#CD3333; border-color:#2E6DA4"
+            choices = unique(df_fty_base$league_name),
+            options = list(
+              placeholder = "Select Fantasy League",
+              onInitialize = I("function(){this.setValue('');}")
+            ),
+            width = "100%"
           ),
-          actionButton(
-            ns("fty_dash_init"),
-            "Kobeee!",
-            style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
-          )
-        ),
-        size = "m"
-      )
-    )
 
-    # Return list containing necessary elements
-    lst(
-      fty_parameters_met,
-      selected
-    )
+          # Select Competitor
+          selectizeInput(
+            ns("fty_competitor_select"),
+            label = NULL,
+            choices = character(0),
+            options = list(
+              placeholder = "Select Fantasy Competitor",
+              onInitialize = I("function(){this.setValue('');}")
+            ),
+            width = "100%"
+          ),
+
+          span(textOutput(ns("login_messages")), style = "color:red"),
+          footer = tagList(
+            actionButton(
+              ns("fty_abort"),
+              label = NULL,
+              icon = icon("square-xmark"),
+              style = "color:#FFF; background-color:#CD3333; border-color:#2E6DA4"
+            ),
+            actionButton(
+              ns("fty_dash_init"),
+              "Kobeee!",
+              style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
+            )
+          ),
+          size = "m"
+        )
+      )
+
+      # Return list containing necessary elements
+      lst(
+        fty_parameters_met,
+        selected
+      )
+    }) |>
+      bindEvent(input$fty_league_competitor_switch, ignoreNULL = FALSE, ignoreInit = FALSE)
   })
 }
 

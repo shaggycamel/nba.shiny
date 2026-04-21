@@ -57,7 +57,14 @@ dfs_h2h_future_generation <- function() {
     left_join(
       dfs_fty_schedule |>
         list_rbind(names_to = "league_id") |>
-        filter(cur_date <= matchup_end) |>
+        # To handle post sesason when cur_date > max(matchup_end)
+        (\(df_t) {
+          if (nrow(filter(df_t, cur_date <= matchup_end)) > 0) {
+            filter(df_t, cur_date <= matchup_end)
+          } else {
+            slice_max(df_t, matchup_end, by = league_id)
+          }
+        })() |>
         mutate(competitor_id = as.character(competitor_id)) |>
         select(league_id, platform, matchup_period, matchup_start, matchup_end, competitor_id, opponent_id),
       by = join_by(league_id, platform, competitor_id),
@@ -69,7 +76,7 @@ dfs_h2h_future_generation <- function() {
       scheduled_to_play = 1
     ) |>
     mutate(
-      matchup_start = replace_na(matchup_start, min(matchup_start, na.rm = TRUE)),
+      matchup_start = replace_na(matchup_start, max(matchup_start, na.rm = TRUE)),
       matchup_end = replace_na(matchup_end, max(matchup_end, na.rm = TRUE)),
       .by = league_id
     ) |>
@@ -78,8 +85,25 @@ dfs_h2h_future_generation <- function() {
     left_join(
       dfs_rolling_stats |>
         list_rbind(names_to = "window") |>
-        filter(game_date >= cur_date) |>
+        # To handle post sesason when cur_date > max(game_date)
+        (\(df_t) {
+          if (nrow(filter(df_t, game_date >= cur_date)) > 0) {
+            filter(df_t, game_date >= cur_date) |>
+              cross_join(tibble(league_id = names(dfs_league_overview)))
+          } else {
+            slice_max(df_t, game_date, by = player_id) |>
+              cross_join(
+                dfs_fty_schedule |>
+                  list_rbind(names_to = "league_id") |>
+                  distinct(league_id, matchup_end) |>
+                  slice_max(matchup_end, by = league_id)
+              ) |>
+              select(-game_date) |>
+              rename(game_date = matchup_end)
+          }
+        })() |>
         select(
+          league_id,
           window,
           player_id,
           inj_status,
@@ -106,7 +130,7 @@ dfs_h2h_future_generation <- function() {
           dd2,
           td3
         ),
-      by = join_by(player_id, player_team == team, matchup_start <= game_date, matchup_end >= game_date),
+      by = join_by(league_id, player_id, player_team == team, matchup_start <= game_date, matchup_end >= game_date),
       relationship = "many-to-many"
     ) |>
     mutate(fmt_date = format(game_date, "%a (%d/%m)")) |>

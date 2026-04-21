@@ -123,7 +123,7 @@ dfs_league_overview <-
   mutate(matchup_sigmoid = if_else(is.na(matchup_sigmoid), matchup, matchup_sigmoid)) |>
   (\(df) {
     cols <- intersect(colnames(df), df_fty_cats$nba_category) |>
-      discard(\(x) str_detect(x, "[g|t][m|a]|all_cat"))
+      purrr::discard(\(x) str_detect(x, "[g|t][m|a]|all_cat")) # explicitly referenced on purpose
 
     bind_cols(
       df,
