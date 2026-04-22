@@ -1,6 +1,4 @@
 base_data_prep <- function(input, selected, opponent, rv_alter_team) {
-  #
-  # Reactive add/exclude
   entries <- reactiveValuesToList(rv_alter_team)
   if (length(entries) > 0) {
     df_alter <- tibble(
@@ -10,14 +8,14 @@ base_data_prep <- function(input, selected, opponent, rv_alter_team) {
     )
 
     valid_combo <- \(df) if (nrow(df) > 0) df else NULL
-    add <- valid_combo(filter(df_alter, action == "add", action_date >= selected$ui_date))
-    ex <- valid_combo(filter(df_alter, action == "ex", action_date >= selected$ui_date))
+    add <- valid_combo(filter(df_alter, action == "add", action_date >= cur_date))
+    ex <- valid_combo(filter(df_alter, action == "ex", action_date >= cur_date))
   } else {
     add <- ex <- NULL
   }
 
   l_id <- as.character(selected$league_id)
-  map(as.character(c(opponent()$id, selected$competitor_id)), \(x) {
+  map(na.omit(as.character(c(opponent()$id, selected$competitor_id))), \(x) {
     bind_rows(
       compact(
         lst(
@@ -61,12 +59,16 @@ base_data_prep <- function(input, selected, opponent, rv_alter_team) {
   }) |>
     list_rbind() |>
     mutate(
-      competitor = ordered(
-        competitor,
-        c(
-          pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(opponent()$id)),
-          pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(selected$competitor_id))
+      competitor = if (is.na(opponent()$id)) {
+        pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(selected$competitor_id))
+      } else {
+        ordered(
+          competitor,
+          c(
+            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(opponent()$id)),
+            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(selected$competitor_id))
+          )
         )
-      )
+      }
     )
 }

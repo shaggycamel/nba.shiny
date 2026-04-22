@@ -158,7 +158,6 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
 #       arrange(desc(min)) |>
 #       distinct(player_name, player_id) |>
 #       deframe(),
-#     ui_date = as.Date("2026-01-01"),
 #     mup_end_date = as.Date("2026-01-04")
 #   )
 

@@ -11,13 +11,14 @@ mod_h2h_ui <- function(id) {
   tagList(
     layout_sidebar(
       sidebar = sidebar(
+        selectInput(ns("matchup"), NULL, choices = 0),
+        radioButtons(ns("window"), NULL, c(7, 15, 30), inline = TRUE),
+        selectInput(ns("hl_player"), NULL, choices = character(0), multiple = TRUE),
         layout_columns(
-          selectInput(ns("matchup"), NULL, choices = 0),
-          checkboxInput(ns("future_only"), "Future"),
+          dateInput(ns("pin_date"), NULL, weekstart = 1),
+          checkboxInput(ns("future_only"), NULL),
+          col_widths = c(8, 4)
         ),
-        radioButtons(ns("window"), "Rolling days", c(7, 15, 30), inline = TRUE),
-        dateInput(ns("pin_date"), NULL, weekstart = 1),
-        selectInput(ns("hl_player"), "Highlight Player", choices = character(0), multiple = TRUE),
         actionButton(ns("alter_team"), "Alter Team"),
         reactableOutput(ns("alter_team_table")),
         # actionButton(ns("snapshot_config"), "Snapshot config"),
@@ -26,12 +27,7 @@ mod_h2h_ui <- function(id) {
         height = 1400,
         fill = FALSE,
         card(full_screen = TRUE, min_height = 500, max_height = 700, plotlyOutput(ns("stat_plot"))),
-        card(
-          full_screen = TRUE,
-          min_height = 200,
-          max_height = 650,
-          reactableOutput(ns("game_table"))
-        )
+        card(full_screen = TRUE, min_height = 200, max_height = 650, reactableOutput(ns("game_table")))
       ),
       fillable = TRUE,
       tags$style(
@@ -59,9 +55,10 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       updateSelectInput(
         session,
         "matchup",
-        choices = sort(unique(
-          (pluck(dfs_fty_schedule, as.character(rv_carry_thru()$selected$league_id)))$matchup_period
-        )),
+        choices = pluck(dfs_fty_schedule, as.character(rv_carry_thru()$selected$league_id)) |>
+          distinct(matchup, matchup_period) |>
+          arrange(matchup_period) |>
+          deframe(),
         selected = rv_carry_thru()$selected$cur_matchup_period
       )
 
@@ -88,7 +85,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       updateDateInput(
         session,
         "pin_date",
-        value = rv_carry_thru()$selected$ui_date,
+        value = cur_date,
         min = unique(na.omit(df_base()$matchup_start)),
         max = unique(na.omit(df_base()$matchup_end))
       )
@@ -98,11 +95,12 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     # Ongoing Date picker pin_date
     observe({
       req(nrow(df_base()) > 0)
+      print(df_base()$matchup_end)
 
       updateDateInput(
         session,
         "pin_date",
-        value = if (max(na.omit(df_base()$matchup_end)) <= rv_carry_thru()$selected$ui_date) {
+        value = if (max(na.omit(df_base()$matchup_end)) <= cur_date) {
           max(na.omit(df_base()$matchup_end))
         } else {
           min(na.omit(df_base()$matchup_start))
@@ -113,26 +111,26 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     }) |>
       bindEvent(input$matchup, ignoreInit = TRUE)
 
-    # observe({
-    #   req(df_base())
-    #   players_already_hl <- setdiff(input$hl_player, input$ex_player)
+    observe({
+      req(input$competitor)
+      players_already_hl <- setdiff(input$hl_player, input$ex_player)
 
-    #   updateSelectInput(
-    #     session,
-    #     "hl_player",
-    #     choices = df_base() |>
-    #       filter(
-    #         competitor ==
-    #           pluck(ls_fty_lookup, "cp_id_to_name", as.character(rv_carry_thru()$selected$league_id), input$competitor)
-    #       ) |>
-    #       arrange(player_name) |>
-    #       select(player_name, player_id) |>
-    #       na.omit() |>
-    #       deframe(),
-    #     selected = players_already_hl
-    #   )
-    # }) |>
-    #   bindEvent(input$add_player, input$ex_player)
+      updateSelectInput(
+        session,
+        "hl_player",
+        choices = df_base() |>
+          filter(
+            competitor ==
+              pluck(ls_fty_lookup, "cp_id_to_name", as.character(rv_carry_thru()$selected$league_id), input$competitor)
+          ) |>
+          arrange(player_name) |>
+          select(player_name, player_id) |>
+          na.omit() |>
+          deframe(),
+        selected = players_already_hl
+      )
+    }) |>
+      bindEvent(df_base())
 
     observe({
       req(opponent())
@@ -166,7 +164,8 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     # Alter Team Table -------------------------------------------------------
 
     output$alter_team_table <- renderReactable({
-      selected_players <- if (length(rv_alter_team) > 0) names(rv_alter_team) else NA_character_
+      req(length(rv_alter_team) > 0)
+      selected_players <- names(rv_alter_team)
 
       df <- tibble(
         key = selected_players,
@@ -203,10 +202,11 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         )
       )
     })
+    # UPTO CHECKING IF ADDED PLAYER IS IN df_base()
 
-    # observeEvent(input$delete_alter_team_key, {
-    #   rv_alter_team[[input$delete_alter_team_key]] <- NULL
-    # })
+    # DO THIS LAST
+    # observe(rv_alter_team[[input$delete_alter_team_key]] <- NULL) |>
+    #   bindEvent(input$delete_alter_team_key)
 
     # Data prep --------------------------------------------------------------
 
@@ -228,8 +228,6 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       plot_data_prep(df_base(), rv_carry_thru()$selected)
     })
 
-    # Potentially turn this into a static df - haven't thought it thru yet
-    # Haven't tested on whehter players can be added/excluded and still greyed out...
     df_grey_player <- reactive({
       req(nrow(df_base()) > 0)
       grey_player_data_prep(input, df_base(), rv_carry_thru()$selected, opponent)
@@ -279,7 +277,6 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     # Game Table -------------------------------------------------------------
 
-    # SOMEWHERE THE DATA BEING FED INTO THIS BECOMES A LSIT
     output$game_table <- renderReactable({
       req(df_tbl_sum(), df_tbl(), df_grey_player())
 
@@ -370,8 +367,7 @@ server <- function(input, output, session) {
       platform = "ESPN",
       league_id = 1382487116,
       competitor_id = 6,
-      cur_matchup_period = 22,
-      ui_date = as.Date("2026-03-29")
+      cur_matchup_period = 99
     )
   ))
   rv_alter_team <- reactiveValues()

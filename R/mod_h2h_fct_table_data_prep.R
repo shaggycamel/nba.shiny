@@ -63,7 +63,7 @@ table_data_prep <- function(df_base, selected, df_grey_player, pin_ix) {
     select(-starts_with("NA")) |>
     rowwise() |>
     mutate(
-      games_remaining = if (selected$ui_date > unique(na.omit(df_base$matchup_end))) {
+      games_remaining = if (cur_date > unique(na.omit(df_base$matchup_end))) {
         0
       } else {
         sum(as.numeric(str_remove(c_across((pin_ix + 4):last_col()), "\\*")), na.rm = TRUE)
