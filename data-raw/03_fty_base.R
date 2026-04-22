@@ -29,6 +29,16 @@ dfs_fty_schedule <-
     across(matches("_id$|_period$"), \(x) as.integer(x)),
     matchup = str_c(matchup_period, " (", matchup_start, ")")
   ) |>
+  (\(df) {
+    bind_rows(
+      df,
+      distinct(df, league_id, season, platform, competitor_id) |>
+        left_join(
+          summarise(df, matchup_start = max(matchup_end) + ddays(1), .by = c(season, platform, league_id)) |>
+            mutate(matchup_period = 99, matchup_end = as.Date("2999-01-01"), matchup = "Post Fantasy")
+        )
+    )
+  })() |>
   nest_by(league_id) |>
   deframe()
 

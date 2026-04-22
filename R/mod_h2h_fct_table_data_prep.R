@@ -40,6 +40,7 @@ grey_player_data_prep <- function(input, df_base, selected, opponent) {
 
 
 table_data_prep <- function(df_base, selected, df_grey_player, pin_ix) {
+  print(count(df_base, matchup_end))
   df_base |>
     arrange(game_date) |>
     select(competitor, player_team, player_id, player_name, inj_status, fmt_date, scheduled_to_play) |>

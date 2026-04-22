@@ -146,6 +146,19 @@ dfs_rolling_stats <- df_nba_player_box_score |>
       group_by(player_id) |>
       fill(inj_status, .direction = "down") |>
       ungroup()
+  }) |>
+  map(\(df_t) {
+    bind_rows(
+      df_t,
+      slice_max(df_t, game_date, by = player_id) |>
+        mutate(
+          season_type = "Post Fantasy",
+          game_id = NA,
+          game_date = as.Date("2999-01-01"),
+          dow = NA,
+          opponent = NA
+        )
+    )
   })
 
 
