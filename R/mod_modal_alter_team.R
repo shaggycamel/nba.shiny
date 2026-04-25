@@ -82,7 +82,7 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
         selected = NA
       )
     }) |>
-      bindEvent(input$add_or_exclude, ignoreNULL = TRUE)
+      bindEvent(input$add_or_exclude, input$proceed, ignoreInit = TRUE)
 
     # Proceed button ---------------------------------------------------------
 

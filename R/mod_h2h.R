@@ -78,24 +78,9 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     }) |>
       bindEvent(rv_carry_thru()$fty_parameters_met())
 
-    # Initial date picker, relies on df_base
-    observe({
-      req(df_base())
-
-      updateDateInput(
-        session,
-        "pin_date",
-        value = cur_date,
-        min = unique(na.omit(df_base()$matchup_start)),
-        max = unique(na.omit(df_base()$matchup_end))
-      )
-    }) |>
-      bindEvent(df_base(), ignoreInit = FALSE)
-
-    # Ongoing Date picker pin_date
+    # Date picker pin_date
     observe({
       req(nrow(df_base()) > 0)
-      print(df_base()$matchup_end)
 
       updateDateInput(
         session,
@@ -103,7 +88,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         value = if (max(na.omit(df_base()$matchup_end)) <= cur_date) {
           max(na.omit(df_base()$matchup_end))
         } else {
-          min(na.omit(df_base()$matchup_start))
+          cur_date
         },
         min = unique(na.omit(df_base()$matchup_start)),
         max = unique(na.omit(df_base()$matchup_end))
@@ -112,25 +97,27 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       bindEvent(input$matchup, ignoreInit = TRUE)
 
     observe({
-      req(input$competitor)
-      players_already_hl <- setdiff(input$hl_player, input$ex_player)
+      req(df_base())
+
+      players_already_hl <- setdiff(
+        input$hl_player,
+        reactiveValuesToList(rv_alter_team) |>
+          keep(\(x) x$action == "ex") |>
+          map_int("player_id")
+      )
 
       updateSelectInput(
         session,
         "hl_player",
         choices = df_base() |>
-          filter(
-            competitor ==
-              pluck(ls_fty_lookup, "cp_id_to_name", as.character(rv_carry_thru()$selected$league_id), input$competitor)
-          ) |>
+          filter(competitor == rv_carry_thru()$selected$competitor_name) |>
           arrange(player_name) |>
           select(player_name, player_id) |>
           na.omit() |>
           deframe(),
         selected = players_already_hl
       )
-    }) |>
-      bindEvent(df_base())
+    })
 
     observe({
       req(opponent())
@@ -159,7 +146,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
       rv_alter_team_trigger(isolate(rv_alter_team_trigger()) + 1L)
     }) |>
-      bindEvent(input$alter_team, ignoreInit = TRUE)
+      bindEvent(input$alter_team)
 
     # Alter Team Table -------------------------------------------------------
 
@@ -202,11 +189,12 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         )
       )
     })
-    # UPTO CHECKING IF ADDED PLAYER IS IN df_base()
 
     # DO THIS LAST
-    # observe(rv_alter_team[[input$delete_alter_team_key]] <- NULL) |>
-    #   bindEvent(input$delete_alter_team_key)
+    observe({
+      rv_alter_team$`add-Mike Conley` <- NULL
+    }) |>
+      bindEvent(input$delete_alter_team_key)
 
     # Data prep --------------------------------------------------------------
 
@@ -339,6 +327,7 @@ library(dplyr)
 library(tidyr)
 library(scales)
 library(lubridate)
+library(rlang)
 
 load("data/cur_date.rda")
 load("data/ls_fty_lookup.rda")
@@ -367,6 +356,7 @@ server <- function(input, output, session) {
       platform = "ESPN",
       league_id = 1382487116,
       competitor_id = 6,
+      competitor_name = "britney_spears",
       cur_matchup_period = 99
     )
   ))

@@ -33,8 +33,6 @@ base_data_prep <- function(input, selected, opponent, rv_alter_team) {
           } else {
             pluck(dfs_h2h_future, l_id, input$matchup, x, input$window) |>
               (\(df) {
-                print(add)
-                print(ex)
                 # fmt: skip
                 if (!is.null(ex)) df <- anti_join(df, ex, by = join_by(player_id, game_date >= action_date))
                 if (!is.null(add)) {
