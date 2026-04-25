@@ -1,4 +1,4 @@
-grey_player_data_prep <- function(input, df_base, selected, opponent) {
+grey_player_data_prep <- function(input, df_base, rv_carry_thru, opponent) {
   # past roster
   df_base |>
     filter(tense == "past") |>
@@ -9,9 +9,9 @@ grey_player_data_prep <- function(input, df_base, selected, opponent) {
     ) |>
     inner_join(
       # Current Roster
-      pluck(dfs_fty_roster, as.character(selected$league_id)) |>
+      pluck(dfs_fty_roster, as.character(rv_carry_thru$league_id)) |>
         filter(
-          competitor_id %in% c(selected$competitor_id, opponent()$id),
+          competitor_id %in% c(rv_carry_thru$competitor_id, opponent()$id),
           matchup_period == as.integer(input$matchup)
         ) |>
         mutate(max_assigned_date = max(assigned_date)) |>
@@ -39,7 +39,7 @@ grey_player_data_prep <- function(input, df_base, selected, opponent) {
 }
 
 
-table_data_prep <- function(df_base, selected, df_grey_player, pin_ix) {
+table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_ix) {
   df_base |>
     arrange(game_date) |>
     select(competitor, player_team, player_id, player_name, inj_status, fmt_date, scheduled_to_play) |>

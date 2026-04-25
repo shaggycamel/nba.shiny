@@ -39,37 +39,37 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
     # Update categories ------------------------------------------------------
 
     observe({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
       updateSelectInput(
         session = session,
         inputId = "fty_lg_ov_cat",
-        choices = pluck(ls_lo_lg_cats, as.character(rv_carry_thru()$selected$league_id))
+        choices = pluck(ls_lo_lg_cats, as.character(rv_carry_thru$league_id))
       )
     }) |>
-      bindEvent(rv_carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
+      bindEvent(rv_carry_thru$fty_parameters_met) # Bind event of when league is swapped too
 
     # Data prep --------------------------------------------------------------
 
-    df_lo <- reactive(pluck(dfs_league_overview, as.character(rv_carry_thru()$selected$league_id)))
+    df_lo <- reactive(pluck(dfs_league_overview, as.character(rv_carry_thru$league_id)))
     df_lo_pt <- reactive(filter(df_lo(), as.integer(matchup_sigmoid) == matchup_sigmoid))
-    opponent <- reactive(get_opponent(rv_carry_thru, rv_carry_thru()$selected$cur_matchup_period))
+    opponent <- reactive(get_opponent(rv_carry_thru, rv_carry_thru$cur_matchup_period))
 
     df_tbl <- reactive({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
       if (input$fty_lg_ov_just_h2h) {
-        pluck(dfs_fty_recent_activity, as.character(rv_carry_thru()$selected$league_id)) |>
-          filter(competitor_id %in% c(rv_carry_thru()$selected$competitor_id, opponent()$id))
+        pluck(dfs_fty_recent_activity, as.character(rv_carry_thru$league_id)) |>
+          filter(competitor_id %in% c(rv_carry_thru$competitor_id, opponent()$id))
       } else {
-        pluck(dfs_fty_recent_activity, as.character(rv_carry_thru()$selected$league_id))
+        pluck(dfs_fty_recent_activity, as.character(rv_carry_thru$league_id))
       }
     }) |>
-      bindEvent(rv_carry_thru()$fty_parameters_met(), input$fty_lg_ov_just_h2h)
+      bindEvent(rv_carry_thru$fty_parameters_met, input$fty_lg_ov_just_h2h)
 
     # Plot -------------------------------------------------------------------
 
     output$fty_lo_plt <- renderPlotly({
-      req(rv_carry_thru()$fty_parameters_met(), df_lo())
+      req(rv_carry_thru$fty_parameters_met, df_lo())
 
       plot_col <- input$fty_lg_ov_cat
       if (input$fty_lg_ov_rank_toggle) {
@@ -133,7 +133,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
           1:length(plt$x$data),
           str_which(
             map_chr(plt$x$data, \(x) x$name),
-            paste0(rv_carry_thru()$selected$competitor_name, "|", opponent()$name)
+            paste0(rv_carry_thru$competitor_name, "|", opponent()$name)
           )
         )
 
@@ -207,39 +207,37 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
 ## To be copied in the server
 # mod_league_overview_server("league_overview_1")
 
-library(shiny)
-library(bslib)
-library(shinyWidgets)
-library(plotly)
-library(stringr)
-library(purrr)
-library(dplyr)
-library(tidyr)
-library(reactable)
+# library(shiny)
+# library(bslib)
+# library(shinyWidgets)
+# library(plotly)
+# library(stringr)
+# library(purrr)
+# library(dplyr)
+# library(tidyr)
+# library(reactable)
 
-load("data/dfs_league_overview.rda")
-load("data/dfs_fty_recent_activity.rda")
-load("data/ls_lo_lg_cats.rda")
+# load("data/dfs_league_overview.rda")
+# load("data/dfs_fty_recent_activity.rda")
+# load("data/ls_lo_lg_cats.rda")
 
-source("R/utils_get_opponent.R")
+# source("R/utils_get_opponent.R")
 
+# ui <- page_fluid(
+#   mod_league_overview_ui("league_overview_1")
+# )
 
-ui <- page_fluid(
-  mod_league_overview_ui("league_overview_1")
-)
+# server <- function(input, output, session) {
+# rv_carry_thru <- reactiveValues(
+#   fty_parameters_met = TRUE,
+#   platform = "ESPN",
+#   league_id = 1382487116,
+#   competitor_id = 6,
+#   competitor_name = "britney_spears",
+#   cur_matchup_period = 99
+# )
 
-server <- function(input, output, session) {
-  rv_carry_thru <- reactiveVal(list(
-    fty_parameters_met = reactiveVal(TRUE),
-    selected = reactiveValues(
-      league_id = 1382487116,
-      competitor_name = "britney_spears",
-      competitor_id = 6,
-      cur_matchup_period = 22
-    )
-  ))
+#   mod_league_overview_server("league_overview_1", rv_carry_thru)
+# }
 
-  mod_league_overview_server("league_overview_1", rv_carry_thru)
-}
-
-shinyApp(ui, server)
+# shinyApp(ui, server)

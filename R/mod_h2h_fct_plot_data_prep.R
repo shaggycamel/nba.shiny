@@ -1,4 +1,4 @@
-plot_data_prep <- function(df_base, selected) {
+plot_data_prep <- function(df_base, rv_carry_thru) {
   df_base |>
     select(
       competitor,
@@ -6,11 +6,11 @@ plot_data_prep <- function(df_base, selected) {
       player_name,
       inj_status,
       matches("f[g|t][m|a]"),
-      any_of(unname(pluck(ls_lo_lg_cats, as.character(selected$league_id))[["Categories"]]))
+      any_of(unname(pluck(ls_lo_lg_cats, as.character(rv_carry_thru$league_id))[["Categories"]]))
     ) |>
     pivot_longer(c(
       matches("f[g|t][m|a]"),
-      any_of(unname(pluck(ls_lo_lg_cats, as.character(selected$league_id))[["Categories"]]))
+      any_of(unname(pluck(ls_lo_lg_cats, as.character(rv_carry_thru$league_id))[["Categories"]]))
     )) |>
     mutate(value = if_else(inj_status == "Out", 0, value, missing = value)) |>
     summarise(

@@ -7,20 +7,19 @@
 app_server <- function(input, output, session) {
   #
   # ------- Base reactives
-  rv_carry_thru <- reactiveVal()
-  rv_alter_team <- reactiveValues()
+  rv_carry_thru <- reactiveValues(fty_parameters_met = FALSE)
+  rv_alter_team <- reactiveVal(list())
   rv_alter_team_modal_vals <- reactiveVal()
   rv_alter_team_counter <- reactiveVal(0L)
   rv_copy_teams <- reactiveVal(NULL)
 
   #------- Login modal
-  observe(rv_carry_thru(mod_modal_login_server("modal_login_1"))) |>
-    bindEvent(input$fty_league_competitor_switch, ignoreNULL = FALSE)
+  mod_modal_login_server("modal_login_1", rv_carry_thru)
 
   # Update dashboard title with selected league and player
   output$navbar_title <- renderUI({
-    req(rv_carry_thru()$fty_parameters_met())
-    span(rv_carry_thru()$selected$league_name, " - ", rv_carry_thru()$selected$competitor_name)
+    req(rv_carry_thru$fty_parameters_met)
+    span(rv_carry_thru$league_name, " - ", rv_carry_thru$competitor_name)
   })
 
   #------- League Overview

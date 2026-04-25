@@ -16,35 +16,30 @@ mod_modal_login_ui <- function(id) {
 
 #' @noRd
 #'
-mod_modal_login_server <- function(id) {
+mod_modal_login_server <- function(id, rv_carry_thru) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Reactive values for selections and met_parameters boolean
-    fty_parameters_met <- reactiveVal(FALSE)
-    selected <- reactiveValues()
-
-    # Main code to assign values to reactive and close modal when complete
     observe({
       if (input$fty_league_select != "" & input$fty_competitor_select != "") {
-        selected$league_name <- input$fty_league_select
-        selected$league_id <- pluck(ls_fty_lookup, "lg_name_to_id", selected$league_name)
-        selected$platform <- pluck(ls_fty_lookup, "lg_id_to_platform", as.character(selected$league_id))
-        selected$cur_matchup_period <- pluck(dfs_fty_schedule, as.character(selected$league_id)) |>
+        rv_carry_thru$league_name <- input$fty_league_select
+        rv_carry_thru$league_id <- pluck(ls_fty_lookup, "lg_name_to_id", rv_carry_thru$league_name)
+        rv_carry_thru$platform <- pluck(ls_fty_lookup, "lg_id_to_platform", as.character(rv_carry_thru$league_id))
+        rv_carry_thru$cur_matchup_period <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
           filter(matchup_start <= cur_date, matchup_end >= cur_date) |>
           pull(matchup_period) |>
           pluck(1)
-        selected$competitor_name <- input$fty_competitor_select
-        selected$competitor_id <- pluck(
+        rv_carry_thru$competitor_name <- input$fty_competitor_select
+        rv_carry_thru$competitor_id <- pluck(
           ls_fty_lookup,
           "cp_name_to_id",
-          as.character(selected$league_id),
-          selected$competitor_name
+          as.character(rv_carry_thru$league_id),
+          rv_carry_thru$competitor_name
         )
-        fty_parameters_met(TRUE)
+        rv_carry_thru$fty_parameters_met <- TRUE
         removeModal()
         output$login_messages <- NULL
-      } else if (input$fty_league_select != "" & input$fty_competitor_select == "") {
+      } else if (input$fty_league_select != "") {
         output$login_messages <- renderText("Select a competitor...")
       } else {
         output$login_messages <- renderText("Select a league...")
@@ -54,7 +49,7 @@ mod_modal_login_server <- function(id) {
 
     # Gotta fill the form at least once!
     observe({
-      if (!fty_parameters_met()) {
+      if (!!rv_carry_thru$fty_parameters_met) {
         output$login_messages <- renderText("You gotta go fill the form at least once!")
       } else {
         removeModal()
@@ -120,12 +115,6 @@ mod_modal_login_server <- function(id) {
           ),
           size = "m"
         )
-      )
-
-      # Return list containing necessary elements
-      lst(
-        fty_parameters_met,
-        selected
       )
     }) |>
       bindEvent(input$fty_league_competitor_switch, ignoreNULL = FALSE, ignoreInit = FALSE)

@@ -11,7 +11,7 @@ mod_h2h_ui <- function(id) {
   tagList(
     layout_sidebar(
       sidebar = sidebar(
-        selectInput(ns("matchup"), NULL, choices = 0),
+        selectizeInput(ns("matchup"), NULL, choices = 0),
         radioButtons(ns("window"), NULL, c(7, 15, 30), inline = TRUE),
         selectInput(ns("hl_player"), NULL, choices = character(0), multiple = TRUE),
         layout_columns(
@@ -50,23 +50,23 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     # Update UI --------------------------------------------------------------
 
     observe({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
-      updateSelectInput(
+      updateSelectizeInput(
         session,
         "matchup",
-        choices = pluck(dfs_fty_schedule, as.character(rv_carry_thru()$selected$league_id)) |>
+        choices = pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
           distinct(matchup, matchup_period) |>
           arrange(matchup_period) |>
           deframe(),
-        selected = rv_carry_thru()$selected$cur_matchup_period
+        selected = rv_carry_thru$cur_matchup_period
       )
 
       updateSelectInput(
         session,
         "hl_player",
-        choices = pluck(dfs_fty_roster, as.character(rv_carry_thru()$selected$league_id)) |>
-          filter(competitor_id == rv_carry_thru()$selected$competitor_id) |>
+        choices = pluck(dfs_fty_roster, as.character(rv_carry_thru$league_id)) |>
+          filter(competitor_id == rv_carry_thru$competitor_id) |>
           slice_max(assigned_date) |>
           arrange(player_name) |>
           select(player_name, player_id) |>
@@ -76,7 +76,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
       # updateSelectInput(session, "log_config", choices = ls_log_config)
     }) |>
-      bindEvent(rv_carry_thru()$fty_parameters_met())
+      bindEvent(rv_carry_thru$fty_parameters_met)
 
     # Date picker pin_date
     observe({
@@ -101,7 +101,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
       players_already_hl <- setdiff(
         input$hl_player,
-        reactiveValuesToList(rv_alter_team) |>
+        rv_alter_team() |>
           keep(\(x) x$action == "ex") |>
           map_int("player_id")
       )
@@ -110,7 +110,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         session,
         "hl_player",
         choices = df_base() |>
-          filter(competitor == rv_carry_thru()$selected$competitor_name) |>
+          filter(competitor == rv_carry_thru$competitor_name) |>
           arrange(player_name) |>
           select(player_name, player_id) |>
           na.omit() |>
@@ -124,17 +124,17 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
       # Update modal data
       rv_alter_team_modal_vals$roster <- df_base() |>
-        filter(competitor_id == as.integer(rv_carry_thru()$selected$competitor_id)) |>
+        filter(competitor_id == as.integer(rv_carry_thru$competitor_id)) |>
         distinct(player_name, player_id) |>
         arrange(player_name) |>
         deframe()
 
       rv_alter_team_modal_vals$free_agents <- dfs_h2h_future |>
-        pluck(as.character(rv_carry_thru()$selected$league_id), "free_agent", "free_agent", "7") |>
+        pluck(as.character(rv_carry_thru$league_id), "free_agent", "free_agent", "7") |>
         distinct(player_name, player_id) |>
         anti_join(
           df_base() |>
-            filter(competitor_id == as.integer(rv_carry_thru()$selected$competitor_id)) |>
+            filter(competitor_id == as.integer(rv_carry_thru$competitor_id)) |>
             distinct(player_name, player_id),
           by = join_by(player_id)
         ) |>
@@ -151,8 +151,8 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     # Alter Team Table -------------------------------------------------------
 
     output$alter_team_table <- renderReactable({
-      req(length(rv_alter_team) > 0)
-      selected_players <- names(rv_alter_team)
+      req(length(rv_alter_team()) > 0)
+      selected_players <- names(rv_alter_team())
 
       df <- tibble(
         key = selected_players,
@@ -166,10 +166,11 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         pagination = FALSE,
         sortable = FALSE,
         compact = TRUE,
+        wrap = FALSE,
         columns = list(
           key = colDef(show = FALSE),
-          action = colDef(name = "Action", maxWidth = 70),
-          player_name = colDef(name = "Player", minWidth = 120),
+          action = colDef(name = "Action", maxWidth = 65),
+          player_name = colDef(name = "Player", maxWidth = 120),
           delete = colDef(
             name = "",
             maxWidth = 30,
@@ -190,9 +191,10 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       )
     })
 
-    # DO THIS LAST
     observe({
-      rv_alter_team$`add-Mike Conley` <- NULL
+      current <- rv_alter_team()
+      current[[input$delete_alter_team_key]] <- NULL
+      rv_alter_team(current)
     }) |>
       bindEvent(input$delete_alter_team_key)
 
@@ -206,24 +208,23 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     df_base <- reactive({
       req(opponent())
-      print("base updating...")
-      base_data_prep(input, rv_carry_thru()$selected, opponent, rv_alter_team)
+      base_data_prep(input, rv_carry_thru, opponent, rv_alter_team())
     }) |>
-      bindEvent(opponent(), reactiveValuesToList(rv_alter_team), ignoreInit = FALSE)
+      bindEvent(opponent(), rv_alter_team(), ignoreInit = FALSE)
 
     df_plt <- reactive({
       req(nrow(df_base()) > 0)
-      plot_data_prep(df_base(), rv_carry_thru()$selected)
+      plot_data_prep(df_base(), rv_carry_thru)
     })
 
     df_grey_player <- reactive({
       req(nrow(df_base()) > 0)
-      grey_player_data_prep(input, df_base(), rv_carry_thru()$selected, opponent)
+      grey_player_data_prep(input, df_base(), rv_carry_thru, opponent)
     })
 
     df_tbl <- reactive({
       req(nrow(df_base()) > 0, df_grey_player(), pin_ix())
-      table_data_prep(df_base(), rv_carry_thru()$selected, df_grey_player(), pin_ix())
+      table_data_prep(df_base(), rv_carry_thru, df_grey_player(), pin_ix())
     })
 
     df_tbl_sum <- reactive({
@@ -315,57 +316,55 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 ## To be copied in the server
 # mod_h2h_server("h2h_1")
 
-library(shiny)
-library(bslib)
-library(shinyWidgets)
-library(reactable)
-library(plotly)
-library(stringr)
-library(purrr)
-library(tibble)
-library(dplyr)
-library(tidyr)
-library(scales)
-library(lubridate)
-library(rlang)
+# library(shiny)
+# library(bslib)
+# library(shinyWidgets)
+# library(reactable)
+# library(plotly)
+# library(stringr)
+# library(purrr)
+# library(tibble)
+# library(dplyr)
+# library(tidyr)
+# library(scales)
+# library(lubridate)
+# library(rlang)
 
-load("data/cur_date.rda")
-load("data/ls_fty_lookup.rda")
-load("data/ls_lo_lg_cats.rda")
-load("data/dfs_fty_schedule.rda")
-load("data/dfs_fty_roster.rda")
-load("data/dfs_h2h_past.rda")
-load("data/dfs_h2h_future.rda")
+# load("data/cur_date.rda")
+# load("data/ls_fty_lookup.rda")
+# load("data/ls_lo_lg_cats.rda")
+# load("data/dfs_fty_schedule.rda")
+# load("data/dfs_fty_roster.rda")
+# load("data/dfs_h2h_past.rda")
+# load("data/dfs_h2h_future.rda")
 
-source("R/mod_h2h_fct_base_data_prep.R")
-source("R/mod_h2h_fct_plot_data_prep.R")
-source("R/mod_h2h_fct_table_data_prep.R")
-source("R/mod_h2h_fct_game_tbl_col_fmt.R")
-source("R/utils_get_opponent.R")
-source("R/mod_modal_alter_team.R")
-source("R/mod_h2h_fct_base_data_prep.R")
+# source("R/mod_h2h_fct_base_data_prep.R")
+# source("R/mod_h2h_fct_plot_data_prep.R")
+# source("R/mod_h2h_fct_table_data_prep.R")
+# source("R/mod_h2h_fct_game_tbl_col_fmt.R")
+# source("R/utils_get_opponent.R")
+# source("R/mod_modal_alter_team.R")
+# source("R/mod_h2h_fct_base_data_prep.R")
 
-ui <- page_fluid(
-  mod_h2h_ui("h2h_1")
-)
+# ui <- page_fluid(
+#   mod_h2h_ui("h2h_1")
+# )
 
-server <- function(input, output, session) {
-  rv_carry_thru <- reactiveVal(list(
-    fty_parameters_met = reactiveVal(TRUE),
-    selected = reactiveValues(
-      platform = "ESPN",
-      league_id = 1382487116,
-      competitor_id = 6,
-      competitor_name = "britney_spears",
-      cur_matchup_period = 99
-    )
-  ))
-  rv_alter_team <- reactiveValues()
-  rv_alter_team_modal_vals <- reactiveValues()
-  rv_alter_team_trigger <- reactiveVal(0L)
+# server <- function(input, output, session) {
+# rv_carry_thru <- reactiveValues(
+#   fty_parameters_met = TRUE,
+#   platform = "ESPN",
+#   league_id = 1382487116,
+#   competitor_id = 6,
+#   competitor_name = "britney_spears",
+#   cur_matchup_period = 99
+# )
+#   rv_alter_team <- reactiveVal(list())
+#   rv_alter_team_modal_vals <- reactiveValues()
+#   rv_alter_team_trigger <- reactiveVal(0L)
 
-  mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
-  mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
-}
+#   mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
+#   mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)

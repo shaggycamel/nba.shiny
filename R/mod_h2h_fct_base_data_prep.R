@@ -1,10 +1,9 @@
-base_data_prep <- function(input, selected, opponent, rv_alter_team) {
-  entries <- reactiveValuesToList(rv_alter_team)
-  if (length(entries) > 0) {
+base_data_prep <- function(input, rv_carry_thru, opponent, rv_alter_team) {
+  if (length(rv_alter_team) > 0) {
     df_alter <- tibble(
-      action = map_chr(entries, "action"),
-      player_id = map_int(entries, "player_id"),
-      action_date = as.Date(map_chr(entries, "action_date"))
+      action = map_chr(rv_alter_team, "action"),
+      player_id = map_int(rv_alter_team, "player_id"),
+      action_date = as.Date(map_chr(rv_alter_team, "action_date"))
     )
 
     valid_combo <- \(df) if (nrow(df) > 0) df else NULL
@@ -14,8 +13,8 @@ base_data_prep <- function(input, selected, opponent, rv_alter_team) {
     add <- ex <- NULL
   }
 
-  l_id <- as.character(selected$league_id)
-  map(na.omit(as.character(c(opponent()$id, selected$competitor_id))), \(x) {
+  l_id <- as.character(rv_carry_thru$league_id)
+  map(na.omit(as.character(c(opponent()$id, rv_carry_thru$competitor_id))), \(x) {
     bind_rows(
       compact(
         lst(
@@ -26,8 +25,8 @@ base_data_prep <- function(input, selected, opponent, rv_alter_team) {
           },
 
           "future" = if (
-            x != selected$competitor_id |
-              as.integer(input$matchup) < selected$cur_matchup_period
+            x != rv_carry_thru$competitor_id |
+              as.integer(input$matchup) < rv_carry_thru$cur_matchup_period
           ) {
             pluck(dfs_h2h_future, l_id, input$matchup, x, input$window)
           } else {
@@ -58,13 +57,13 @@ base_data_prep <- function(input, selected, opponent, rv_alter_team) {
     list_rbind() |>
     mutate(
       competitor = if (is.na(opponent()$id)) {
-        pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(selected$competitor_id))
+        pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(rv_carry_thru$competitor_id))
       } else {
         ordered(
           competitor,
           c(
             pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(opponent()$id)),
-            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(selected$competitor_id))
+            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(rv_carry_thru$competitor_id))
           )
         )
       }

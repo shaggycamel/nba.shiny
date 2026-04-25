@@ -88,15 +88,16 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
 
     observe({
       if (input$player != "") {
-        rv_alter_team[[
+        current <- rv_alter_team()
+        current[[
           if (input$add_or_exclude) {
             paste0("add-", names(keep(rv_alter_team_modal_vals$free_agents, \(x) x == input$player)))
           } else {
             paste0("ex-", names(keep(rv_alter_team_modal_vals$roster, \(x) x == input$player)))
           }
-        ]] = lst(
+        ]] <- lst(
           "action" = if (input$add_or_exclude) "add" else "ex",
-          "action_date" = as.character(input$action_date), # Store as char to stop epoch storage
+          "action_date" = as.character(input$action_date),
           "player_id" = as.integer(input$player),
           "player_name" = if (input$add_or_exclude) {
             names(keep(rv_alter_team_modal_vals$free_agents, \(x) x == input$player))
@@ -104,6 +105,7 @@ mod_modal_alter_team_server <- function(id, rv_alter_team, rv_alter_team_modal_v
             names(keep(rv_alter_team_modal_vals$roster, \(x) x == input$player))
           }
         )
+        rv_alter_team(current)
 
         removeModal()
         output$message <- NULL

@@ -34,19 +34,19 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
     # On load...
     observe({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
-      chs <- names(pluck(dfs_fty_nba_mup_weeks, as.character(rv_carry_thru()$selected$league_id)))
+      chs <- names(pluck(dfs_fty_nba_mup_weeks, as.character(rv_carry_thru$league_id)))
       updateSelectInput(
         session = session,
         inputId = "matchup_selection",
         choices = chs,
-        selected = chs[rv_carry_thru()$selected$cur_matchup_period]
+        selected = chs[rv_carry_thru$cur_matchup_period]
       )
 
-      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru()$selected$league_id)) |>
+      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
         distinct(matchup_period, matchup_start, matchup_end) |>
-        filter(matchup_period == rv_carry_thru()$selected$cur_matchup_period)
+        filter(matchup_period == rv_carry_thru$cur_matchup_period)
 
       updateDateInput(
         session,
@@ -56,13 +56,13 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         max = mup_min_max_dts$matchup_end
       )
     }) |>
-      bindEvent(rv_carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
+      bindEvent(rv_carry_thru$fty_parameters_met) # Bind event of when league is swapped too
 
     # On matchup_selection change...
     observe({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
-      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru()$selected$league_id)) |>
+      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
         filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
         distinct(matchup_period, matchup_start, matchup_end)
 
@@ -84,10 +84,10 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
     # On copy_teams
     observe({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
       selected_values <- dfs_fty_nba_mup_weeks |>
-        pluck(as.character(rv_carry_thru()$selected$league_id), input$matchup_selection) |>
+        pluck(as.character(rv_carry_thru$league_id), input$matchup_selection) |>
         select(Team) |>
         # mutate(Team = as.character(Team)) |>
         slice(getReactableState("schedule_table", "selected"))
@@ -118,9 +118,9 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
     # Pinned date calculations
     mup_dts <- reactive({
-      req(rv_carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
-      pluck(dfs_fty_schedule, as.character(rv_carry_thru()$selected$league_id)) |>
+      pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
         filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
         distinct(matchup_period, matchup_start, matchup_end)
     }) |>
@@ -140,7 +140,7 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
       max_range <- as.integer(difftime(mup_dts()$matchup_end, mup_dts()$matchup_start)) + 3
 
       dfs_fty_nba_mup_weeks |>
-        pluck(as.character(rv_carry_thru()$selected$league_id), input$matchup_selection) |>
+        pluck(as.character(rv_carry_thru$league_id), input$matchup_selection) |>
         rowwise() |>
         mutate(
           Pin = sum(c_across(
@@ -267,13 +267,14 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 # )
 
 # server <- function(input, output, session) {
-#   rv_carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       league_id = 95537,
-#       cur_matchup_period = 19
-#     )
-#   ))
+# rv_carry_thru <- reactiveValues(
+#   fty_parameters_met = TRUE,
+#   platform = "ESPN",
+#   league_id = 1382487116,
+#   competitor_id = 6,
+#   competitor_name = "britney_spears",
+#   cur_matchup_period = 99
+# )
 
 #   mod_schedule_table_server("schedule_table_1", rv_carry_thru)
 # }
