@@ -82,16 +82,21 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     observe({
       req(nrow(df_base()) > 0)
 
+      matchup_start <- max(na.omit(df_base()$matchup_start))
+      matchup_end <- max(na.omit(df_base()$matchup_end))
+
       updateDateInput(
         session,
         "pin_date",
-        value = if (max(na.omit(df_base()$matchup_end)) <= cur_date) {
-          max(na.omit(df_base()$matchup_end))
-        } else {
+        value = if (between(cur_date, matchup_start, matchup_end)) {
           cur_date
+        } else if (cur_date > matchup_end) {
+          matchup_end
+        } else {
+          matchup_start
         },
-        min = unique(na.omit(df_base()$matchup_start)),
-        max = unique(na.omit(df_base()$matchup_end))
+        min = matchup_start,
+        max = matchup_end
       )
     }) |>
       bindEvent(input$matchup, ignoreInit = TRUE)
