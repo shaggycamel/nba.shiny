@@ -118,7 +118,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         # Apply hovertemplate to point traces so HTML renders
         style(
           hovertemplate = ~ paste0(fg3_m_text, "<extra></extra>"),
-          traces = seq_len(n_competitors) + n_competitors
+          traces = if (!is.na(opponent()$id)) seq_len(n_competitors) + n_competitors else seq_len(n_competitors)
         ) |>
         layout(xaxis = list(fixedrange = TRUE), yaxis = list(fixedrange = TRUE)) |>
         rangeslider(
@@ -133,7 +133,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
           1:length(plt$x$data),
           str_which(
             map_chr(plt$x$data, \(x) x$name),
-            paste0(rv_carry_thru$competitor_name, "|", opponent()$name)
+            paste0(rv_carry_thru$competitor_name, if (!is.na(opponent()$id)) str_c("|", opponent()$name) else NULL)
           )
         )
 

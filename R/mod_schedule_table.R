@@ -41,7 +41,7 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         session = session,
         inputId = "matchup_selection",
         choices = chs,
-        selected = chs[rv_carry_thru$cur_matchup_period]
+        selected = if (rv_carry_thru$cur_matchup_period == 99) tail(chs, 1) else chs[rv_carry_thru$cur_matchup_period]
       )
 
       mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
@@ -58,12 +58,21 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
     }) |>
       bindEvent(rv_carry_thru$fty_parameters_met) # Bind event of when league is swapped too
 
+    # ADD post_fantasy to: dfs_fty_schedule
+
     # On matchup_selection change...
     observe({
       req(rv_carry_thru$fty_parameters_met)
 
       mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
-        filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
+        filter(
+          matchup_period ==
+            if (input$matchup_selection == "Post Fantasy") {
+              99
+            } else {
+              as.numeric(str_extract(input$matchup_selection, "^\\d+ "))
+            }
+        ) |>
         distinct(matchup_period, matchup_start, matchup_end)
 
       updateDateInput(
@@ -80,7 +89,7 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         max = mup_min_max_dts$matchup_end
       )
     }) |>
-      bindEvent(input$matchup_selection, ignoreInit = TRUE)
+      bindEvent(input$matchup_selection, ignoreInit = TRUE, ignoreNULL = FALSE)
 
     # On copy_teams
     observe({
@@ -118,17 +127,24 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
     # Pinned date calculations
     mup_dts <- reactive({
-      req(rv_carry_thru$fty_parameters_met)
+      req(rv_carry_thru$fty_parameters_met, input$matchup_selection != "")
 
       pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
-        filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
+        filter(
+          matchup_period ==
+            if (input$matchup_selection == "Post Fantasy") {
+              99
+            } else {
+              as.numeric(str_extract(input$matchup_selection, "^\\d+ "))
+            }
+        ) |>
         distinct(matchup_period, matchup_start, matchup_end)
     }) |>
       bindEvent(input$matchup_selection)
 
     # Pin index calc
     pin_ix <- reactive({
-      req(mup_dts())
+      req(nrow(mup_dts()) > 0)
       as.integer(difftime(input$pin_date, mup_dts()$matchup_start)) + 3
     }) |>
       bindEvent(input$pin_date)
@@ -144,7 +160,10 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         rowwise() |>
         mutate(
           Pin = sum(c_across(
-            if (input$pin_date == mup_dts()$matchup_start & input$pin_dir == "-") {
+            if (
+              (input$pin_date == mup_dts()$matchup_start & input$pin_dir == "-") |
+                input$matchup_selection == "Post Fantasy"
+            ) {
               0
             } else if (input$pin_dir == "+") {
               pin_ix():max_range

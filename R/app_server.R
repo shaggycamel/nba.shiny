@@ -9,7 +9,7 @@ app_server <- function(input, output, session) {
   # ------- Base reactives
   rv_carry_thru <- reactiveValues(fty_parameters_met = FALSE)
   rv_alter_team <- reactiveVal(list())
-  rv_alter_team_modal_vals <- reactiveVal()
+  rv_alter_team_modal_vals <- reactiveValues()
   rv_alter_team_counter <- reactiveVal(0L)
   rv_copy_teams <- reactiveVal(NULL)
 
