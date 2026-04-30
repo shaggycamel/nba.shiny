@@ -26,10 +26,7 @@ dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id
       ) |>
       (\(x) {
         bind_rows(
-          slice_max(x, value, n = 3, by = player_id) |>
-            mutate(performance = "Excels At") |>
-            filter(value > 0),
-
+          # Moved Excels at to happen reactively in mod file
           slice_min(x, value, n = 3, by = c(player_id, player_name)) |>
             mutate(performance = "Weak At")
         )
@@ -96,4 +93,17 @@ ls_injuries <-
   })
 
 
-usethis::use_data(dfs_player_comparison, ls_injuries, overwrite = TRUE)
+# Nested game log --------------------------------------------------------
+
+ls_player_game_log <-
+  df_nba_player_box_score |>
+  filter(between(game_date, cur_date - ddays(30), cur_date - ddays(1))) |>
+  select(player_id, game_date, opponent, any_of(cats)) |>
+  arrange(desc(game_date)) |>
+  nest_by(player_id) |>
+  deframe()
+
+
+# Write data -------------------------------------------------------------
+
+usethis::use_data(dfs_player_comparison, ls_injuries, ls_player_game_log, overwrite = TRUE)

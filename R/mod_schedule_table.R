@@ -26,7 +26,7 @@ mod_schedule_table_ui <- function(id) {
 #'
 #' @noRd
 #'
-mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
+mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -34,19 +34,19 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
 
     # On load...
     observe({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
-      chs <- names(pluck(dfs_fty_nba_mup_weeks, as.character(carry_thru()$selected$league_id)))
+      chs <- names(pluck(dfs_fty_nba_mup_weeks, as.character(rv_carry_thru$league_id)))
       updateSelectInput(
         session = session,
         inputId = "matchup_selection",
         choices = chs,
-        selected = chs[carry_thru()$selected$cur_matchup_period]
+        selected = if (rv_carry_thru$cur_matchup_period == 99) tail(chs, 1) else chs[rv_carry_thru$cur_matchup_period]
       )
 
-      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
+      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
         distinct(matchup_period, matchup_start, matchup_end) |>
-        filter(matchup_period == carry_thru()$selected$cur_matchup_period)
+        filter(matchup_period == rv_carry_thru$cur_matchup_period)
 
       updateDateInput(
         session,
@@ -56,14 +56,23 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
         max = mup_min_max_dts$matchup_end
       )
     }) |>
-      bindEvent(carry_thru()$fty_parameters_met()) # Bind event of when league is swapped too
+      bindEvent(rv_carry_thru$fty_parameters_met) # Bind event of when league is swapped too
+
+    # ADD post_fantasy to: dfs_fty_schedule
 
     # On matchup_selection change...
     observe({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
-      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
-        filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
+      mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
+        filter(
+          matchup_period ==
+            if (input$matchup_selection == "Post Fantasy") {
+              99
+            } else {
+              as.numeric(str_extract(input$matchup_selection, "^\\d+ "))
+            }
+        ) |>
         distinct(matchup_period, matchup_start, matchup_end)
 
       updateDateInput(
@@ -80,14 +89,14 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
         max = mup_min_max_dts$matchup_end
       )
     }) |>
-      bindEvent(input$matchup_selection, ignoreInit = TRUE)
+      bindEvent(input$matchup_selection, ignoreInit = TRUE, ignoreNULL = FALSE)
 
     # On copy_teams
     observe({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met)
 
       selected_values <- dfs_fty_nba_mup_weeks |>
-        pluck(as.character(carry_thru()$selected$league_id), input$matchup_selection) |>
+        pluck(as.character(rv_carry_thru$league_id), input$matchup_selection) |>
         select(Team) |>
         # mutate(Team = as.character(Team)) |>
         slice(getReactableState("schedule_table", "selected"))
@@ -101,7 +110,7 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
           timer = 2000
         )
       } else {
-        copy_teams_trigger(selected_values$Team)
+        rv_copy_teams(selected_values$Team)
         show_toast(
           title = NULL,
           text = "Teams added to comparison...",
@@ -118,17 +127,24 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
 
     # Pinned date calculations
     mup_dts <- reactive({
-      req(carry_thru()$fty_parameters_met())
+      req(rv_carry_thru$fty_parameters_met, input$matchup_selection != "")
 
-      pluck(dfs_fty_schedule, as.character(carry_thru()$selected$league_id)) |>
-        filter(matchup_period == as.numeric(str_extract(input$matchup_selection, "^\\d+ "))) |>
+      pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
+        filter(
+          matchup_period ==
+            if (input$matchup_selection == "Post Fantasy") {
+              99
+            } else {
+              as.numeric(str_extract(input$matchup_selection, "^\\d+ "))
+            }
+        ) |>
         distinct(matchup_period, matchup_start, matchup_end)
     }) |>
       bindEvent(input$matchup_selection)
 
     # Pin index calc
     pin_ix <- reactive({
-      req(mup_dts())
+      req(nrow(mup_dts()) > 0)
       as.integer(difftime(input$pin_date, mup_dts()$matchup_start)) + 3
     }) |>
       bindEvent(input$pin_date)
@@ -140,11 +156,14 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
       max_range <- as.integer(difftime(mup_dts()$matchup_end, mup_dts()$matchup_start)) + 3
 
       dfs_fty_nba_mup_weeks |>
-        pluck(as.character(carry_thru()$selected$league_id), input$matchup_selection) |>
+        pluck(as.character(rv_carry_thru$league_id), input$matchup_selection) |>
         rowwise() |>
         mutate(
           Pin = sum(c_across(
-            if (input$pin_date == mup_dts()$matchup_start & input$pin_dir == "-") {
+            if (
+              (input$pin_date == mup_dts()$matchup_start & input$pin_dir == "-") |
+                input$matchup_selection == "Post Fantasy"
+            ) {
               0
             } else if (input$pin_dir == "+") {
               pin_ix():max_range
@@ -157,7 +176,12 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
     }) |>
       bindEvent(input$matchup_selection, input$pin_dir, input$pin_date)
 
-    #   # Schedule Table ---------------------------------------------------------
+    # Schedule Table ---------------------------------------------------------
+
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
+    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
 
     output$schedule_table <- renderReactable({
       req(df_tbl())
@@ -227,6 +251,7 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
 
       reactable(
         df_tbl(),
+        defaultSorted = rv_tbl_sort_order(),
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff", fontWeight = "bold", textAlign = "center")),
         selection = "multiple",
         filterable = TRUE,
@@ -267,15 +292,16 @@ mod_schedule_table_server <- function(id, carry_thru, copy_teams_trigger) {
 # )
 
 # server <- function(input, output, session) {
-#   carry_thru <- reactiveVal(list(
-#     fty_parameters_met = reactiveVal(TRUE),
-#     selected = reactiveValues(
-#       league_id = 95537,
-#       cur_matchup_period = 19
-#     )
-#   ))
+# rv_carry_thru <- reactiveValues(
+#   fty_parameters_met = TRUE,
+#   platform = "ESPN",
+#   league_id = 1382487116,
+#   competitor_id = 6,
+#   competitor_name = "britney_spears",
+#   cur_matchup_period = 99
+# )
 
-#   mod_schedule_table_server("schedule_table_1", carry_thru)
+#   mod_schedule_table_server("schedule_table_1", rv_carry_thru)
 # }
 
 # shinyApp(ui, server)

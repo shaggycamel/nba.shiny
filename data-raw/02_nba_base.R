@@ -1,8 +1,9 @@
 # Player box score -------------------------------------------------------
 
 df_nba_player_box_score <-
-  tbl(db_con(), I("nba.nba_player_box_score_vw_new")) |>
+  tbl(db_con(), I("nba.nba_player_box_score_vw")) |>
   filter(season >= prev_season, !is.na(player_id)) |>
+  filter(game_date < cur_date) |> # for testing purposes
   as_tibble() |>
   mutate(
     across(ends_with("_id"), \(x) as.integer(x)),
@@ -31,7 +32,7 @@ df_nba_schedule <-
   complete(game_date = seq.Date(min(game_date), max(game_date), by = "day")) |>
   select(game_date) |>
   left_join(
-    tbl(db_con(), I("nba.nba_schedule_vw_new")) |>
+    tbl(db_con(), I("nba.nba_schedule_vw")) |>
       filter(season == cur_season, season_type == 'Regular Season') |>
       as_tibble(),
     by = join_by(game_date)
@@ -48,6 +49,8 @@ df_nba_schedule <-
 
 
 # Season segments --------------------------------------------------------
+
+# Might need to do work here when season ends
 
 df_nba_season_segments <-
   tbl(db_con(), I("nba.nba_season_segments_vw")) |>
@@ -77,8 +80,9 @@ ls_nba_teams <- tbl(db_con(), I("nba.nba_teams_vw")) |>
 
 # Team roster ------------------------------------------------------------
 
-df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw_new")) |>
+df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw")) |>
   filter(season == cur_season) |>
+  filter(entry_date < cur_date | is.na(entry_date)) |> # for testing purposes
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
 
@@ -144,6 +148,19 @@ dfs_rolling_stats <- df_nba_player_box_score |>
       group_by(player_id) |>
       fill(inj_status, .direction = "down") |>
       ungroup()
+  }) |>
+  map(\(df_t) {
+    bind_rows(
+      df_t,
+      slice_max(df_t, game_date, by = player_id) |>
+        mutate(
+          season_type = "Post Fantasy",
+          game_id = NA,
+          game_date = as.Date("2999-01-01"),
+          dow = NA,
+          opponent = NA
+        )
+    )
   })
 
 

@@ -3,7 +3,7 @@
 df_fty_base <-
   tbl(db_con(), I("fty.fty_base_vw")) |>
   filter(season == cur_season) |>
-  filter(!league_id %in% c(24608)) |>
+  filter(!league_id %in% c(24608)) |> # DELTE
   arrange(str_to_lower(league_name), str_to_lower(competitor_name)) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
@@ -14,7 +14,7 @@ df_fty_base <-
 df_fty_cats <-
   tbl(db_con(), I("fty.fty_categories_vw")) |>
   filter(season == cur_season | is.na(league_id)) |>
-  filter(!league_id %in% c(24608) | is.na(league_id)) |>
+  filter(!league_id %in% c(24608) | is.na(league_id)) |> # DELTE
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
 
@@ -23,12 +23,22 @@ df_fty_cats <-
 dfs_fty_schedule <-
   tbl(db_con(), I("fty.fty_league_schedule_vw")) |>
   filter(season == cur_season) |>
-  filter(!league_id %in% c(24608)) |>
+  filter(!league_id %in% c(24608)) |> # DELETE
   as_tibble() |>
   mutate(
     across(matches("_id$|_period$"), \(x) as.integer(x)),
     matchup = str_c(matchup_period, " (", matchup_start, ")")
   ) |>
+  (\(df) {
+    bind_rows(
+      df,
+      distinct(df, league_id, season, platform, competitor_id) |>
+        left_join(
+          summarise(df, matchup_start = max(matchup_end) + ddays(1), .by = c(season, platform, league_id)) |>
+            mutate(matchup_period = 99, matchup_end = as.Date("2999-01-01"), matchup = "Post Fantasy")
+        )
+    )
+  })() |>
   nest_by(league_id) |>
   deframe()
 
@@ -38,7 +48,8 @@ dfs_fty_schedule <-
 dfs_fty_roster <-
   tbl(db_con(), I("fty.fty_team_roster_schedule_vw")) |>
   filter(season == cur_season) |>
-  filter(!league_id %in% c(24608)) |>
+  filter(!league_id %in% c(24608)) |> # DELETE
+  filter(assigned_date < cur_date) |> # for testing purposes
   select(-c(competitor_name, opponent_name)) |>
   as_tibble() |>
   mutate(across(matches("_id$|_period$"), \(x) as.integer(x))) |>
@@ -56,7 +67,8 @@ dfs_fty_roster <-
 df_fty_box_score <-
   tbl(db_con(), I("fty.fty_matchup_box_score_vw")) |>
   filter(season == cur_season) |>
-  filter(!league_id %in% c(24608)) |>
+  filter(!league_id %in% c(24608)) |> # DELETE
+  filter(matchup <= 11) |> # for tetsing purposes
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
   relocate(starts_with("competitor"), .before = matchup) |>
   as_tibble() |>
@@ -70,7 +82,7 @@ df_fty_box_score <-
 
 dfs_fty_free_agents <-
   tbl(db_con(), I("fty.fty_free_agents_vw")) |>
-  filter(!league_id %in% c(24608)) |>
+  filter(!league_id %in% c(24608)) |> # DELETE
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
   nest_by(league_id) |>
@@ -82,7 +94,7 @@ dfs_fty_free_agents <-
 dfs_fty_recent_activity <-
   tbl(db_con(), I("fty.fty_recent_activity_vw")) |>
   filter(season == cur_season) |>
-  filter(!league_id %in% c(24608)) |>
+  filter(!league_id %in% c(24608)) |> # DELETE
   select(league_id, competitor_id, competitor_name, player, action, timestamp) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>

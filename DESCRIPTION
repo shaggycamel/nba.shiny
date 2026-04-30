@@ -13,6 +13,7 @@ Imports:
     DBI,
     dplyr,
     ggplot2,
+    glue,
     golem,
     htmltools,
     later,
