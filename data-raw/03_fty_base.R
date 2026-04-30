@@ -49,7 +49,7 @@ dfs_fty_roster <-
   tbl(db_con(), I("fty.fty_team_roster_schedule_vw")) |>
   filter(season == cur_season) |>
   filter(!league_id %in% c(24608)) |> # DELETE
-  filter(assigned_date < cur_date) |> # for testing purposes
+  # filter(assigned_date < cur_date) |> # for testing purposes
   select(-c(competitor_name, opponent_name)) |>
   as_tibble() |>
   mutate(across(matches("_id$|_period$"), \(x) as.integer(x))) |>
@@ -68,7 +68,7 @@ df_fty_box_score <-
   tbl(db_con(), I("fty.fty_matchup_box_score_vw")) |>
   filter(season == cur_season) |>
   filter(!league_id %in% c(24608)) |> # DELETE
-  filter(matchup <= 11) |> # for tetsing purposes
+  # filter(matchup <= 11) |> # for testing purposes
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
   relocate(starts_with("competitor"), .before = matchup) |>
   as_tibble() |>

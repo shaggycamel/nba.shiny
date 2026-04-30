@@ -3,7 +3,7 @@
 df_nba_player_box_score <-
   tbl(db_con(), I("nba.nba_player_box_score_vw")) |>
   filter(season >= prev_season, !is.na(player_id)) |>
-  filter(game_date < cur_date) |> # for testing purposes
+  # filter(game_date < cur_date) |> # for testing purposes
   as_tibble() |>
   mutate(
     across(ends_with("_id"), \(x) as.integer(x)),
@@ -82,7 +82,7 @@ ls_nba_teams <- tbl(db_con(), I("nba.nba_teams_vw")) |>
 
 df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw")) |>
   filter(season == cur_season) |>
-  filter(entry_date < cur_date | is.na(entry_date)) |> # for testing purposes
+  # filter(entry_date < cur_date | is.na(entry_date)) |> # for testing purposes
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
 
