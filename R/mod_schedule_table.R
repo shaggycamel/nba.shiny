@@ -176,7 +176,12 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
     }) |>
       bindEvent(input$matchup_selection, input$pin_dir, input$pin_date)
 
-    #   # Schedule Table ---------------------------------------------------------
+    # Schedule Table ---------------------------------------------------------
+
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
+    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
 
     output$schedule_table <- renderReactable({
       req(df_tbl())
@@ -246,6 +251,7 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
       reactable(
         df_tbl(),
+        defaultSorted = rv_tbl_sort_order(),
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff", fontWeight = "bold", textAlign = "center")),
         selection = "multiple",
         filterable = TRUE,

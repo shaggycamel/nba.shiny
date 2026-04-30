@@ -147,6 +147,11 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
     output$tbl_recent_activity <- renderReactable({
       req(df_tbl())
 
+      # Table state
+      rv_tbl_sort_order <- reactiveVal()
+      cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
+      observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
+
       col_fmt <- list(
         player = colDef(name = "Player"),
         competitor_id = colDef(show = FALSE),

@@ -356,14 +356,14 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 # )
 
 # server <- function(input, output, session) {
-# rv_carry_thru <- reactiveValues(
-#   fty_parameters_met = TRUE,
-#   platform = "ESPN",
-#   league_id = 1382487116,
-#   competitor_id = 6,
-#   competitor_name = "britney_spears",
-#   cur_matchup_period = 99
-# )
+#   rv_carry_thru <- reactiveValues(
+#     fty_parameters_met = TRUE,
+#     platform = "ESPN",
+#     league_id = 1382487116,
+#     competitor_id = 6,
+#     competitor_name = "britney_spears",
+#     cur_matchup_period = 99
+#   )
 #   rv_alter_team <- reactiveVal(list())
 #   rv_alter_team_modal_vals <- reactiveValues()
 #   rv_alter_team_trigger <- reactiveVal(0L)

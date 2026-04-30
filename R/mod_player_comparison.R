@@ -173,6 +173,11 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
     # Comparison table -------------------------------------------------------
 
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
+    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
+
     output$comparison_table <- renderReactable({
       # df creation
       df <- df_comparison() |>
@@ -230,8 +235,7 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
         pagination = FALSE,
         bordered = TRUE,
         highlight = TRUE,
-        # Possible to retain order when filter changes???
-        # defaultSorted = list(min = "desc", player = "asc"),
+        defaultSorted = rv_tbl_sort_order(),
         defaultSortOrder = "desc",
         defaultColDef = colDef(
           align = "left",
@@ -300,6 +304,7 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
 # library(tidyr)
 # library(shinyWidgets)
 # library(later)
+# library(glue)
 
 # load("data/dfs_player_comparison.rda")
 # load("data/ls_lo_lg_cats.rda")
@@ -312,14 +317,14 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
 # )
 
 # server <- function(input, output, session) {
-# rv_carry_thru <- reactiveValues(
-#   fty_parameters_met = TRUE,
-#   platform = "ESPN",
-#   league_id = 1382487116,
-#   competitor_id = 6,
-#   competitor_name = "britney_spears",
-#   cur_matchup_period = 99
-# )
+#   rv_carry_thru <- reactiveValues(
+#     fty_parameters_met = TRUE,
+#     platform = "ESPN",
+#     league_id = 1382487116,
+#     competitor_id = 6,
+#     competitor_name = "britney_spears",
+#     cur_matchup_period = 11
+#   )
 
 #   mod_player_comparison_server("player_comparison_1", rv_carry_thru, reactiveVal(c("ATL" = 1610612737)))
 # }
