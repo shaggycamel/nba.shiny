@@ -2,7 +2,7 @@
 
 df_nba_player_box_score <-
   tbl(db_con(), I("nba.nba_player_box_score_vw")) |>
-  filter(season >= prev_season, !is.na(player_id)) |>
+  filter(season >= prev_season, season_type == "Regular Season", !is.na(player_id)) |>
   # filter(game_date < cur_date) |> # for testing purposes
   as_tibble() |>
   mutate(
@@ -99,7 +99,7 @@ dfs_rolling_stats <- df_nba_player_box_score |>
       df_t |>
         mutate(
           across(any_of(cats), \(x) {
-            slider::slide_period_dbl(x, game_date, "day", ~ mean(.x, na.rm = TRUE), .before = window, .after = -1)
+            slider::slide_period_dbl(x, game_date, "day", ~ median(.x, na.rm = TRUE), .before = window, .after = -1)
           }),
           .by = player_id
         ) |>

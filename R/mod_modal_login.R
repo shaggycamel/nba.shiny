@@ -16,7 +16,7 @@ mod_modal_login_ui <- function(id) {
 
 #' @noRd
 #'
-mod_modal_login_server <- function(id, rv_carry_thru) {
+mod_modal_login_server <- function(id, rv_carry_thru, rv_switch_league_counter) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -69,7 +69,6 @@ mod_modal_login_server <- function(id, rv_carry_thru) {
       bindEvent(input$fty_league_select, ignoreNULL = TRUE)
 
     # Modal UI structure.
-    # # This needs to be defined in the server component.
     observe({
       showModal(
         modalDialog(
@@ -117,7 +116,7 @@ mod_modal_login_server <- function(id, rv_carry_thru) {
         )
       )
     }) |>
-      bindEvent(input$fty_league_competitor_switch, ignoreNULL = FALSE, ignoreInit = FALSE)
+      bindEvent(rv_switch_league_counter(), ignoreNULL = FALSE, ignoreInit = FALSE)
   })
 }
 

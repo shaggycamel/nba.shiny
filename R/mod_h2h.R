@@ -147,7 +147,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         deframe()
 
       rv_alter_team_modal_vals$ui_date <- input$pin_date
-      rv_alter_team_modal_vals$mup_end_date = unique(df_base()$matchup_end)
+      rv_alter_team_modal_vals$mup_end_date <- unique(df_base()$matchup_end)
 
       rv_alter_team_trigger(isolate(rv_alter_team_trigger()) + 1L)
     }) |>
