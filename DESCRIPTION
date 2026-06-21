@@ -25,6 +25,7 @@ Imports:
     RPostgres,
     scales,
     shiny,
+    shinyjs,
     shinyWidgets,
     stringr,
     tibble,

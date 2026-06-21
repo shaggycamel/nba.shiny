@@ -4,17 +4,16 @@
 #'     DO NOT REMOVE.
 #' @import shiny
 #' @importFrom bslib page_navbar nav_spacer nav_panel nav_menu nav_item bs_theme
+#' @importFrom shinyjs useShinyjs
 #' @noRd
 app_ui <- function(request) {
   tagList(
-    # Leave this function for adding external resources
     golem_add_external_resources(),
-    # Your application UI logic
+    useShinyjs(),
     page_navbar(
       id = "title_container",
       window_title = "NBA Fantasy",
       title = uiOutput("navbar_title"),
-      # put blank login page somewhere
       nav_spacer(),
       nav_panel("Overview", mod_league_overview_ui("league_overview_1")),
       nav_panel("H2H", mod_h2h_ui("h2h_1")),

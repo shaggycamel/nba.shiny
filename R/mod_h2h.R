@@ -21,7 +21,8 @@ mod_h2h_ui <- function(id) {
         ),
         actionButton(ns("alter_team"), "Alter Team"),
         reactableOutput(ns("alter_team_table")),
-        # actionButton(ns("snapshot_config"), "Snapshot config"),
+        actionButton(ns("snapshot_config"), "📸 Take Snapshot"),
+        reactableOutput(ns("snapshot_table"))
       ),
       card(
         height = 1400,
@@ -73,8 +74,6 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
           na.omit() |>
           deframe()
       )
-
-      # updateSelectInput(session, "log_config", choices = ls_log_config)
     }) |>
       bindEvent(rv_carry_thru$fty_parameters_met)
 
@@ -123,6 +122,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         selected = players_already_hl
       )
     })
+    # Should a bindEvent be here???
 
     observe({
       req(opponent())
@@ -202,6 +202,152 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       rv_alter_team(current)
     }) |>
       bindEvent(input$delete_alter_team_key)
+
+    # Snapshot config --------------------------------------------------------
+
+    snapshot_log <- reactiveVal(list())
+    snapshot_trigger <- reactiveVal(0L)
+    pending_snapshot <- reactiveVal(NULL)
+
+    observe({
+      snapshot_trigger(snapshot_trigger() + 1)
+      ls_snapshot <- reactiveValuesToList(input)
+      ls_snapshot <- list(
+        "matchup" = ls_snapshot$matchup,
+        "hl_player" = ls_snapshot$hl_player,
+        "pin_date" = ls_snapshot$pin_date,
+        "window" = ls_snapshot$window,
+        "future_only" = ls_snapshot$future_only,
+        "alter_team" = rv_alter_team()
+      )
+
+      pending_snapshot(ls_snapshot)
+
+      showModal(
+        modalDialog(
+          title = NULL,
+          {
+            ti <- textInput(ns("snapshot_name"), NULL, value = paste0("snapshot_", snapshot_trigger()))
+            ti$children[[2]]$attribs$maxlength <- 20
+            ti
+          },
+          footer = tagList(
+            div(
+              style = "display: flex; align-items: center; justify-content: space-between; width: 100%;",
+              span(textOutput(ns("snapshot_error_msg")), style = "color:red;"),
+              div(
+                style = "display: flex; gap: 8px;",
+                modalButton("Cancel"),
+                actionButton(ns("confirm_snapshot_name"), "Kobeee", class = "btn-primary")
+              )
+            )
+          )
+        )
+      )
+    }) |>
+      bindEvent(input$snapshot_config)
+
+    observe({
+      name_raw <- str_trim(input$snapshot_name)
+      is_dupe <- name_raw %in% names(snapshot_log())
+      toggleState(id = "confirm_snapshot_name", condition = nzchar(name_raw) && !is_dupe)
+      if (is_dupe) {
+        output$snapshot_error_msg <- renderText("Snapshot id already exists...")
+      }
+      if (!nzchar(name_raw)) {
+        output$snapshot_error_msg <- renderText("Snapshot id can't be empty...")
+      }
+    }) |>
+      bindEvent(input$snapshot_name)
+
+    observe({
+      current <- snapshot_log()
+      current[[str_trim(input$snapshot_name)]] <- pending_snapshot()
+      snapshot_log(current)
+      pending_snapshot(NULL)
+      output$snapshot_error_msg <- NULL
+      removeModal()
+    }) |>
+      bindEvent(input$confirm_snapshot_name)
+
+    output$snapshot_table <- renderReactable({
+      req(length(snapshot_log()) > 0)
+      snapshots <- names(snapshot_log())
+
+      df <- tibble(
+        snap = snapshots,
+        delete = na_lgl
+      )
+
+      reactable(
+        df,
+        pagination = FALSE,
+        sortable = FALSE,
+        compact = TRUE,
+        wrap = FALSE,
+        theme = reactableTheme(headerStyle = list(display = "none")),
+        columns = list(
+          snap = colDef(
+            name = "",
+            cell = function(value, index) {
+              tags$span(
+                value,
+                onclick = sprintf(
+                  "Shiny.setInputValue('%s', '%s', {priority: 'event'})",
+                  ns("select_snapshot"),
+                  df$snap[index]
+                ),
+                style = "cursor: pointer;"
+              )
+            }
+          ),
+          delete = colDef(
+            name = "",
+            maxWidth = 30,
+            sortable = FALSE,
+            cell = function(value, index) {
+              tags$button(
+                icon("xmark"),
+                class = "btn btn-danger btn-sm",
+                onclick = sprintf(
+                  "Shiny.setInputValue('%s', '%s', {priority: 'event'})",
+                  ns("delete_snapshot"),
+                  df$snap[index]
+                )
+              )
+            }
+          )
+        )
+      )
+    })
+
+    observe({
+      current <- snapshot_log()
+      current[[input$delete_snapshot]] <- NULL
+      snapshot_log(current)
+    }) |>
+      bindEvent(input$delete_snapshot)
+
+    observe({
+      vals <- snapshot_log()[[input$select_snapshot]]
+      updateSelectInput(session, "matchup", selected = vals$matchup)
+      updateSelectInput(
+        session,
+        "hl_player",
+        choices = df_base() |>
+          filter(competitor == rv_carry_thru$competitor_name) |>
+          arrange(player_name) |>
+          select(player_name, player_id) |>
+          na.omit() |>
+          deframe(),
+        selected = vals$hl_player
+      )
+      updateDateInput(session, "pin_date", value = vals$pin_date)
+      updateSliderInput(session, "window", value = vals$window)
+      updateCheckboxInput(session, "future_only", value = vals$future_only)
+      rv_alter_team(vals$alter_team)
+    }) |>
+      bindEvent(input$select_snapshot)
 
     # Data prep --------------------------------------------------------------
 
@@ -321,55 +467,56 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 ## To be copied in the server
 # mod_h2h_server("h2h_1")
 
-# library(shiny)
-# library(bslib)
-# library(shinyWidgets)
-# library(reactable)
-# library(plotly)
-# library(stringr)
-# library(purrr)
-# library(tibble)
-# library(dplyr)
-# library(tidyr)
-# library(scales)
-# library(lubridate)
-# library(rlang)
+library(shiny)
+library(bslib)
+library(shinyWidgets)
+library(shinyjs)
+library(reactable)
+library(plotly)
+library(stringr)
+library(purrr)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(lubridate)
+library(rlang)
 
-# load("data/cur_date.rda")
-# load("data/ls_fty_lookup.rda")
-# load("data/ls_lo_lg_cats.rda")
-# load("data/dfs_fty_schedule.rda")
-# load("data/dfs_fty_roster.rda")
-# load("data/dfs_h2h_past.rda")
-# load("data/dfs_h2h_future.rda")
+load("data/cur_date.rda")
+load("data/ls_fty_lookup.rda")
+load("data/ls_lo_lg_cats.rda")
+load("data/dfs_fty_schedule.rda")
+load("data/dfs_fty_roster.rda")
+load("data/dfs_h2h_past.rda")
+load("data/dfs_h2h_future.rda")
 
-# source("R/mod_h2h_fct_base_data_prep.R")
-# source("R/mod_h2h_fct_plot_data_prep.R")
-# source("R/mod_h2h_fct_table_data_prep.R")
-# source("R/mod_h2h_fct_game_tbl_col_fmt.R")
-# source("R/utils_get_opponent.R")
-# source("R/mod_modal_alter_team.R")
-# source("R/mod_h2h_fct_base_data_prep.R")
+source("R/mod_h2h_fct_base_data_prep.R")
+source("R/mod_h2h_fct_plot_data_prep.R")
+source("R/mod_h2h_fct_table_data_prep.R")
+source("R/mod_h2h_fct_game_tbl_col_fmt.R")
+source("R/utils_get_opponent.R")
+source("R/mod_modal_alter_team.R")
+source("R/mod_h2h_fct_base_data_prep.R")
 
-# ui <- page_fluid(
-#   mod_h2h_ui("h2h_1")
-# )
+ui <- page_fluid(
+  mod_h2h_ui("h2h_1")
+)
 
-# server <- function(input, output, session) {
-#   rv_carry_thru <- reactiveValues(
-#     fty_parameters_met = TRUE,
-#     platform = "ESPN",
-#     league_id = 1382487116,
-#     competitor_id = 6,
-#     competitor_name = "britney_spears",
-#     cur_matchup_period = 99
-#   )
-#   rv_alter_team <- reactiveVal(list())
-#   rv_alter_team_modal_vals <- reactiveValues()
-#   rv_alter_team_trigger <- reactiveVal(0L)
+server <- function(input, output, session) {
+  rv_carry_thru <- reactiveValues(
+    fty_parameters_met = TRUE,
+    platform = "ESPN",
+    league_id = 1382487116,
+    competitor_id = 6,
+    competitor_name = "britney_spears",
+    cur_matchup_period = 99
+  )
+  rv_alter_team <- reactiveVal(list())
+  rv_alter_team_modal_vals <- reactiveValues()
+  rv_alter_team_trigger <- reactiveVal(0L)
 
-#   mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
-#   mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
-# }
+  mod_h2h_server("h2h_1", rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
+  mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
+}
 
-# shinyApp(ui, server)
+shinyApp(ui, server)
