@@ -10,6 +10,7 @@
 #' @importFrom later later
 #' @importFrom lubridate parse_date_time NA_Date_
 #' @importFrom plotly config ggplotly layout plotlyOutput rangeslider renderPlotly style
+#' @importFrom r2d3 r2d3 renderD3 d3Output
 #' @importFrom purrr compact discard discard_at keep list_rbind map map_chr map_int pluck detect_index
 #' @importFrom reactable colDef colFormat getReactableState reactable reactableOutput reactableTheme renderReactable updateReactable JS
 #' @importFrom rlang is_null set_names sym na_lgl
