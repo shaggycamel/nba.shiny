@@ -1,11 +1,14 @@
 // stackedbar.js
-// r2d3 script — 100% stacked bar chart (ggplot geom_col(position = "fill")
-// equivalent), with:
-//   - d3.stackOffsetExpand to normalize each x-category to 0-1
-//   - fixed 50% reference line
+// r2d3 script — 100% stacked HORIZONTAL bar chart (ggplot
+// geom_col(position = "fill") + coord_flip() equivalent), with:
+//   - d3.stackOffsetExpand to normalize each category's bar to 0-1
+//   - fixed 50% reference line (vertical)
 //   - reversed Set2 palette (scale_fill_brewer("Set2", direction = -1))
-//   - hovermode="x"-style tooltip: one tooltip per x-category, listing
-//     every competitor's pre-formatted label string together
+//   - per-segment tooltip: hover a single stacked segment to see just
+//     that competitor's pre-formatted label string
+//
+// Layout: categories run top-to-bottom (one horizontal bar per category),
+// each bar's 0-1 stack proportion runs left-to-right.
 //
 // Expected input data shape (one row per name x competitor, long format —
 // same shape ggplot/geom_col consumed):
@@ -13,27 +16,27 @@
 //
 // options:
 //   competitors : array of competitor names, in desired stack/legend order
-//                 (top of stack = last in array, matching ggplot's default
-//                 stacking order). If omitted, inferred from data in
-//                 first-seen order.
+//                 (right side of stack = last in array, matching ggplot's
+//                 default stacking order). If omitted, inferred from data
+//                 in first-seen order.
 //   height, width, margin : standard sizing overrides
 
 // ---- persistent setup (created once, reused across re-renders) --------
 
-var margin = options.margin || { top: 20, right: 20, bottom: 30, left: 20 };
+var margin = options.margin || { top: 60, right: 20, bottom: 30, left: 70 };
 
 var g = svg.select("g.plot-area");
 if (g.empty()) {
   svg.style("overflow", "hidden");
   g = svg.append("g").attr("class", "plot-area");
-  svg.append("g").attr("class", "x-axis");
+  svg.append("g").attr("class", "category-axis");
   svg.append("line").attr("class", "ref-line")
     .attr("stroke", "#333")
     .attr("stroke-width", 1);
   svg.append("g").attr("class", "competitor-labels");
 }
 
-var xAxisG = svg.select(".x-axis");
+var categoryAxisG = svg.select(".category-axis");
 var refLine = svg.select(".ref-line");
 var labelsG = svg.select(".competitor-labels");
 
@@ -98,55 +101,67 @@ r2d3.onRender(function(data, svg, width, height, options) {
   var series = stackGen(byName);
 
   // ---- scales ----
+  // Horizontal layout: categories run top-to-bottom (band scale on the
+  // vertical axis), 0-1 stack proportion runs left-to-right (linear scale
+  // on the horizontal axis). Variable names keep their original meaning
+  // (categoryScale, proportionScale) rather than reusing x/y, since their
+  // screen orientation no longer matches their old x/y roles.
 
-  var x = d3.scaleBand()
+  var categoryScale = d3.scaleBand()
     .domain(names)
-    .range([0, innerWidth])
+    .range([0, innerHeight])
     .padding(0.2);
 
-  var y = d3.scaleLinear()
+  var proportionScale = d3.scaleLinear()
     .domain([0, 1])
-    .range([innerHeight, 0]);
+    .range([0, innerWidth]);
 
   var color = d3.scaleOrdinal()
     .domain(competitors)
     .range(d3.schemeSet2.slice(0, competitors.length).reverse());
 
-  // ---- axis (x only — labs(y=NULL) means no y-axis drawn, matching theme) ----
+  // ---- axis (categories only — labs(x=NULL, y=NULL) in the original
+  // means no proportion-axis numbers are drawn, matching that theme) ----
 
-  xAxisG
-    .attr("transform", "translate(" + margin.left + "," + (margin.top + innerHeight) + ")")
+  categoryAxisG
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
     .transition().duration(300)
-    .call(d3.axisBottom(x).tickSizeOuter(0));
+    .call(d3.axisLeft(categoryScale).tickSizeOuter(0));
 
-  // ---- 50% reference line ----
+  categoryAxisG.selectAll("text")
+    .style("font-size", "16px");
+
+  // ---- 50% reference line (now vertical, spanning the full height) ----
 
   refLine
-    .attr("x1", margin.left)
-    .attr("x2", margin.left + innerWidth)
+    .attr("y1", margin.top)
+    .attr("y2", margin.top + innerHeight)
     .transition().duration(300)
-    .attr("y1", margin.top + y(0.5))
-    .attr("y2", margin.top + y(0.5));
+    .attr("x1", margin.left + proportionScale(0.5))
+    .attr("x2", margin.left + proportionScale(0.5));
 
-  // ---- competitor name labels: two white boxes pinned to fixed y
-  // positions (10% and 90% of the 0-1 stack scale), horizontally centered
-  // across the chart width. Top box = last competitor in stack order
-  // (topmost segment), bottom box = first competitor in stack order
-  // (bottommost segment). ----
+  // ---- competitor name labels: two white boxes sitting in the top
+  // margin, above all bars (not tied to any single category row).
+  // Horizontally centered at 25% and 75% of the proportion scale —
+  // i.e. roughly over whichever competitor's territory typically
+  // dominates that side of a 2-competitor stack. firstCompetitor (first
+  // in stack order, segment[0] side) labels the 25% mark; lastCompetitor
+  // (last in stack order, segment[1] side) labels the 75% mark. ----
 
-  var topCompetitor = competitors[competitors.length - 1];
-  var bottomCompetitor = competitors[0];
+  var firstCompetitor = competitors[0];
+  var lastCompetitor = competitors[competitors.length - 1];
 
   var labelBoxData = [
-    { competitor: topCompetitor, yFrac: 0.90, anchor: "top" },    // y=90% on 0-1 scale = near top of chart (y is inverted)
-    { competitor: bottomCompetitor, yFrac: 0.10, anchor: "bottom" } // y=10% on 0-1 scale = near bottom of chart
+    { competitor: firstCompetitor, xFrac: 0.25, anchor: "first" },
+    { competitor: lastCompetitor, xFrac: 0.75, anchor: "last" }
   ];
 
   var labelFontSize = 19;
   var labelBoxPadding = 8;
   var labelBoxHeight = 34;
+  var labelBoxY = margin.top - labelBoxHeight - 10; // sits in the top margin, 10px above the plot area
 
-  labelsG.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  labelsG.attr("transform", "translate(0,0)"); // boxes positioned in absolute svg coords below, not translated with the plot area
 
   var labelItems = labelsG.selectAll("g.competitor-label")
     .data(labelBoxData, function(d) { return d.anchor; });
@@ -172,17 +187,17 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
   var labelMerged = labelEnter.merge(labelItems);
 
-  // Text sets first (centered on chart midpoint), so its measured width
-  // can size and center the background rect under it.
+  // Text sets first, so its measured width can size and center the
+  // background rect under it.
   labelMerged.select("text.label-box-text")
     .text(function(d) { return d.competitor; })
-    .attr("x", innerWidth / 2)
-    .attr("y", function(d) { return y(d.yFrac); });
+    .attr("x", function(d) { return margin.left + proportionScale(d.xFrac); })
+    .attr("y", labelBoxY + labelBoxHeight / 2);
 
   var labelMaxBoxWidth = Math.max(innerWidth - 8, 0); // 4px breathing room on each side
 
   labelMerged.select("rect.label-box-bg")
-    .attr("y", function(d) { return y(d.yFrac) - labelBoxHeight / 2; })
+    .attr("y", labelBoxY)
     .attr("width", function(d) {
       // Measure the sibling text node just set above to size the box snugly,
       // but never exceed the chart's own drawable width — an overlong name
@@ -196,9 +211,9 @@ r2d3.onRender(function(data, svg, width, height, options) {
       var textNode = d3.select(this.parentNode).select("text.label-box-text").node();
       var naturalWidth = textNode.getBBox().width + labelBoxPadding * 2;
       var boxWidth = Math.min(naturalWidth, labelMaxBoxWidth);
-      var idealX = innerWidth / 2 - boxWidth / 2;
-      // Clamp so the box itself never sits outside [0, innerWidth].
-      return Math.max(0, Math.min(idealX, innerWidth - boxWidth));
+      var idealX = margin.left + proportionScale(d.xFrac) - boxWidth / 2;
+      // Clamp so the box itself never sits outside [margin.left, margin.left + innerWidth].
+      return Math.max(margin.left, Math.min(idealX, margin.left + innerWidth - boxWidth));
     });
 
   // Note: if a competitor name is long enough that its natural width
@@ -237,27 +252,27 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
   rects.transition().duration(300)
     .attr("fill", function(d) { return color(d.key); })
-    .attr("x", function(d) { return x(d.segment.data.name); })
-    .attr("width", x.bandwidth())
-    .attr("y", function(d) { return y(d.segment[1]); })
-    .attr("height", function(d) { return y(d.segment[0]) - y(d.segment[1]); });
+    .attr("y", function(d) { return categoryScale(d.segment.data.name); })
+    .attr("height", categoryScale.bandwidth())
+    .attr("x", function(d) { return proportionScale(d.segment[0]); })
+    .attr("width", function(d) { return proportionScale(d.segment[1]) - proportionScale(d.segment[0]); });
 
   rects.enter()
     .append("rect")
     .attr("fill", function(d) { return color(d.key); })
-    .attr("x", function(d) { return x(d.segment.data.name); })
-    .attr("width", x.bandwidth())
-    .attr("y", innerHeight)
-    .attr("height", 0)
+    .attr("y", function(d) { return categoryScale(d.segment.data.name); })
+    .attr("height", categoryScale.bandwidth())
+    .attr("x", 0)
+    .attr("width", 0)
     .transition().duration(300)
-    .attr("y", function(d) { return y(d.segment[1]); })
-    .attr("height", function(d) { return y(d.segment[0]) - y(d.segment[1]); });
+    .attr("x", function(d) { return proportionScale(d.segment[0]); })
+    .attr("width", function(d) { return proportionScale(d.segment[1]) - proportionScale(d.segment[0]); });
 
   // ---- per-segment tooltip: hover a single stacked segment to see only
-  // that competitor's own label, not the whole x-category's group.
-  // Tooltip anchors below the cursor (grows downward) when hovering the
-  // top segment of the stack, and above the cursor (grows upward) when
-  // hovering the bottom segment. ----
+  // that competitor's own label, not the whole row's group. Tooltip
+  // anchors below the cursor (grows downward) when hovering a row in the
+  // top half of the chart, and above the cursor (grows upward) when
+  // hovering a row in the bottom half. ----
 
   var hoveredIsTop = false;
   var measuredWidth = 0;
@@ -268,9 +283,12 @@ r2d3.onRender(function(data, svg, width, height, options) {
       var label = d.segment.data.__labels[d.key];
       if (label == null) return;
 
-      // Top segment's upper edge sits at (or essentially at) 1 on the
-      // normalized 0-1 stack; bottom segment's lower edge sits at 0.
-      hoveredIsTop = d.segment[1] >= 0.999;
+      // Horizontal bars: every segment in a row sits at the same height,
+      // so cascade direction is now based on the row's vertical position
+      // within the plot, not stack position — rows in the top half of
+      // the chart cascade down, rows in the bottom half cascade up.
+      var rowCenter = categoryScale(d.segment.data.name) + categoryScale.bandwidth() / 2;
+      hoveredIsTop = rowCenter < innerHeight / 2;
 
       var html = label.replace(/\n/g, "<br>");
 

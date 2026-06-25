@@ -18,7 +18,6 @@
 //
 // options:
 //   is_rank      : boolean — if true, y-axis is reversed (rank 1 at top)
-//   y_label      : string — y-axis label / category name
 //   competitors  : array of competitor names in fixed legend/color order
 //                  (mirrors the stackedbar pattern — pass explicit order
 //                  from R rather than inferring, since color/legend
@@ -67,6 +66,8 @@ var brushG = svg.select(".brush-group");
 
 // Tooltip — same pattern as stackedbar.js: keyed to this svg node so
 // re-renders reuse it rather than creating a new floating div each time.
+var TOOLTIP_TRANSITION = "width 180ms ease-out, height 180ms ease-out, opacity 120ms ease-out";
+
 var svgNode = svg.node();
 var tooltip;
 if (svgNode.__r2d3Tooltip) {
@@ -84,7 +85,7 @@ if (svgNode.__r2d3Tooltip) {
     .style("box-shadow", "0 1px 4px rgba(0,0,0,0.15)")
     .style("overflow", "hidden")
     .style("white-space", "nowrap")
-    .style("transition", "width 180ms ease-out, height 180ms ease-out, opacity 120ms ease-out")
+    .style("transition", TOOLTIP_TRANSITION)
     .style("width", "0px")
     .style("height", "0px")
     .style("opacity", 0);
@@ -99,8 +100,7 @@ var palette = d3.schemeSet2.concat(d3.schemeSet3);
 
 r2d3.onRender(function(data, svg, width, height, options) {
   var innerWidth = width - margin.left - margin.right;
-  var mainInnerHeight = height - margin.top - margin.bottom - miniChartHeight - miniChartGap;
-  var innerHeight = mainInnerHeight; // kept for readability in existing code below
+  var innerHeight = height - margin.top - margin.bottom - miniChartHeight - miniChartGap;
 
   g.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   linesG.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
@@ -110,7 +110,7 @@ r2d3.onRender(function(data, svg, width, height, options) {
     .attr("x", 0)
     .attr("y", 0)
     .attr("width", innerWidth)
-    .attr("height", mainInnerHeight);
+    .attr("height", innerHeight);
 
   var isRank = !!options.is_rank;
   var competitors = (Array.isArray(options.competitors) && options.competitors.length > 0)
@@ -156,12 +156,29 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
   var fullDomain = [matchupValues[0], matchupValues[matchupValues.length - 1]]; // pinned to real matchup range, not sigmoid's smoothed overshoot
 
+  // Computed once here (not duplicated later) since both x's initial
+  // domain and the brush's default-application logic need to agree on
+  // whether this render represents a genuinely new data range.
+  var domainKey = JSON.stringify(fullDomain);
+  var isNewDomain = svgNode.__lastDomainKey !== domainKey;
+
+  if (isNewDomain) {
+    svgNode.__lastDomainKey = domainKey;
+    svgNode.__brushDefaultMatchup = [Math.max(fullDomain[0], fullDomain[1] - 5), fullDomain[1]];
+    svgNode.__currentMatchupExtent = svgNode.__brushDefaultMatchup.slice();
+  }
+
   // `x` is the main chart's scale — its domain gets rescaled by the brush,
   // so it's declared with `var` (not `const`) and reassigned in place by
   // updateMainXDomain() below rather than recreated each brush event.
+  // Initial domain: the user's persisted current selection (carried over
+  // from a prior render) if this isn't a new data range, otherwise the
+  // freshly computed default — never just fullDomain unconditionally,
+  // since that would snap the visible window back to "everything" on
+  // every unrelated re-render (category/toggle change).
   var xPad = 6; // keeps the leftmost/rightmost marker's own radius from clipping at the plot edge
   var x = d3.scaleLinear()
-    .domain(fullDomain)
+    .domain(svgNode.__currentMatchupExtent)
     .range([xPad, innerWidth - xPad]);
 
   var yExtent = d3.extent(data, function(d) { return d.value; });
@@ -211,7 +228,7 @@ r2d3.onRender(function(data, svg, width, height, options) {
   var pathsMerged, markersMerged; // assigned inside redrawMain(), referenced by legend click handlers below
 
   function redrawMain(animate) {
-    var dur = animate ? 300 : 0;
+    var dur = animate ? 1000 : 0;
 
     // Ticks: only label matchup values that fall within the current
     // (possibly brushed) x-domain, so the axis doesn't show ticks for
@@ -240,14 +257,17 @@ r2d3.onRender(function(data, svg, width, height, options) {
       .append("path")
       .attr("class", "competitor-line")
       .attr("fill", "none")
-      .attr("stroke-width", 2);
+      .attr("stroke-width", 2)
+      .attr("stroke", function(d) { return color(d.name); })
+      .style("opacity", 0) // seed: invisible at first, faded in by the transition below
+      .attr("d", function(d) { return lineGen(d.rows); }); // seed: final shape immediately (no prior shape to morph from on a true first render)
 
     pathsMerged = pathsEnter.merge(paths);
 
     pathsMerged
       .attr("stroke", function(d) { return color(d.name); })
-      .style("opacity", function(d) { return opacityFor(d.name); })
       .transition().duration(dur)
+      .style("opacity", function(d) { return opacityFor(d.name); })
       .attr("d", function(d) { return lineGen(d.rows); });
 
     // ---- markers ----
@@ -257,16 +277,21 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
     markers.exit().remove();
 
-    markersMerged = markers.enter()
+    var markersEnter = markers.enter()
       .append("circle")
       .attr("class", "marker-point")
       .attr("r", 3)
-      .merge(markers);
+      .attr("fill", function(d) { return color(d.competitor_name); })
+      .attr("cx", function(d) { return x(d.matchup_sigmoid); }) // seed: final position immediately
+      .attr("cy", function(d) { return y(d.value); })
+      .style("opacity", 0); // seed: invisible at first, faded in by the transition below
+
+    markersMerged = markersEnter.merge(markers);
 
     markersMerged
       .attr("fill", function(d) { return color(d.competitor_name); })
-      .style("opacity", function(d) { return opacityFor(d.competitor_name); })
       .transition().duration(dur)
+      .style("opacity", function(d) { return opacityFor(d.competitor_name); })
       .attr("cx", function(d) { return x(d.matchup_sigmoid); })
       .attr("cy", function(d) { return y(d.value); });
 
@@ -301,7 +326,7 @@ r2d3.onRender(function(data, svg, width, height, options) {
         tooltip.node().offsetHeight; // force layout flush before re-enabling transition
 
         tooltip
-          .style("transition", "width 180ms ease-out, height 180ms ease-out, opacity 120ms ease-out")
+          .style("transition", TOOLTIP_TRANSITION)
           .style("width", measuredWidth + "px")
           .style("height", measuredHeight + "px")
           .style("opacity", 1);
@@ -324,7 +349,7 @@ r2d3.onRender(function(data, svg, width, height, options) {
       })
       .on("mouseout", function() {
         tooltip
-          .style("transition", "width 180ms ease-out, height 180ms ease-out, opacity 120ms ease-out")
+          .style("transition", TOOLTIP_TRANSITION)
           .style("opacity", 0)
           .style("width", "0px")
           .style("height", "0px");
@@ -384,23 +409,16 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
   brushG.attr("transform", "translate(" + margin.left + "," + miniTop + ")");
 
-  // Default brush extent: last ~5 matchup periods, regardless of the
-  // W2W/Cum toggle. Only applied on first render or when the underlying
-  // data's matchup range actually changes (e.g. switching league/category)
-  // — once the user has dragged the brush, their selection persists across
-  // unrelated re-renders (same pattern as offSet/click state above).
-  var domainKey = JSON.stringify(fullDomain);
-
-  if (svgNode.__lastDomainKey !== domainKey) {
-    svgNode.__lastDomainKey = domainKey;
-    svgNode.__brushDefaultMatchup = [Math.max(fullDomain[0], fullDomain[1] - 5), fullDomain[1]];
-  }
+  // Default brush extent (last ~5 matchup periods) and current selection
+  // were already resolved above, alongside x's initial domain — both
+  // need to agree on isNewDomain, so it's computed once, not duplicated.
 
   var defaultMatchupExtent = svgNode.__brushDefaultMatchup;
   var defaultPixelExtent = [xMini(defaultMatchupExtent[0]), xMini(defaultMatchupExtent[1])];
 
   function updateMainXDomain(matchupExtent) {
     x.domain(matchupExtent);
+    svgNode.__currentMatchupExtent = matchupExtent;
     redrawMain(false); // no transition during drag — keeps it responsive
   }
 
@@ -411,25 +429,20 @@ r2d3.onRender(function(data, svg, width, height, options) {
   // brush event, and the brush's own default selection fill is hidden.
   // Select-or-create so re-renders reuse the same two rects rather than
   // inserting duplicates each time.
-  var maskLeft = brushG.select("rect.brush-mask-left");
-  if (maskLeft.empty()) {
-    maskLeft = brushG.insert("rect", ":first-child").attr("class", "brush-mask-left");
+  function selectOrCreateMask(className) {
+    var mask = brushG.select("rect." + className);
+    if (mask.empty()) {
+      mask = brushG.insert("rect", ":first-child").attr("class", className);
+    }
+    return mask
+      .attr("fill", "#888")
+      .attr("fill-opacity", 0.4)
+      .attr("y", 0)
+      .attr("height", miniChartHeight);
   }
-  maskLeft
-    .attr("fill", "#888")
-    .attr("fill-opacity", 0.4)
-    .attr("y", 0)
-    .attr("height", miniChartHeight);
 
-  var maskRight = brushG.select("rect.brush-mask-right");
-  if (maskRight.empty()) {
-    maskRight = brushG.insert("rect", ":first-child").attr("class", "brush-mask-right");
-  }
-  maskRight
-    .attr("fill", "#888")
-    .attr("fill-opacity", 0.4)
-    .attr("y", 0)
-    .attr("height", miniChartHeight);
+  var maskLeft = selectOrCreateMask("brush-mask-left");
+  var maskRight = selectOrCreateMask("brush-mask-right");
 
   function updateMasks(selection) {
     var x0 = selection[0];
@@ -462,11 +475,17 @@ r2d3.onRender(function(data, svg, width, height, options) {
     .attr("fill", "transparent")
     .attr("stroke", "#666");
 
-  // Apply the persisted/default selection. Using brush.move (rather than
-  // just setting x.domain directly) keeps the brush handles' visual
-  // position in sync with whatever domain is actually active.
-  brushG.call(brush.move, defaultPixelExtent);
-  updateMasks(defaultPixelExtent);
+  // Apply the default selection's handle position only on a genuinely new
+  // domain. brush.move dispatches the brush's own "end" event, which
+  // calls redrawMain again — doing this on every render was double-firing
+  // redrawMain and cancelling the very transition we wanted to see. On an
+  // unrelated re-render, the brush's handle DOM already persists at
+  // wherever the user last dragged it (confirmed: elements survive
+  // re-renders), so nothing needs to be touched here at all.
+  if (isNewDomain) {
+    brushG.call(brush.move, defaultPixelExtent);
+    updateMasks(defaultPixelExtent);
+  }
 
   // ======================================================================
   // LEGEND — swatch + label per competitor, in the reserved right

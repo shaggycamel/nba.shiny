@@ -3,6 +3,7 @@
 #' @importFrom config get
 #' @importFrom DBI dbConnect
 #' @importFrom dplyr across all_of anti_join arrange between bind_rows c_across case_when coalesce desc distinct filter inner_join if_else join_by left_join mutate percent_rank pull rename rowwise select slice slice_max summarise ungroup
+#' @importFrom forcats fct_drop
 #' @importFrom ggplot2 aes geom_col geom_hline geom_line geom_path geom_point ggplot labs scale_fill_brewer scale_x_continuous scale_y_reverse theme_bw
 #' @importFrom glue glue
 #' @importFrom golem activate_js add_resource_path bundle_resources favicon with_golem_options

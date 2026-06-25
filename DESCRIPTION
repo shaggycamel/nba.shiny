@@ -12,6 +12,7 @@ Imports:
     config,
     DBI,
     dplyr,
+    forcats,
     ggplot2,
     glue,
     golem,
