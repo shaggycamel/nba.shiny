@@ -14,16 +14,15 @@
 // same shape ggplot/geom_col consumed):
 //   [{ name: "...", competitor: "...", value: 0.42, label: "..." }, ...]
 //
-// options:
-//   competitors : array of competitor names, in desired stack/legend order
-//                 (right side of stack = last in array, matching ggplot's
-//                 default stacking order). If omitted, inferred from data
-//                 in first-seen order.
+// Competitor order/names are derived entirely from `data` (first-seen
+// order in the array) — no options.competitors override. If you need a
+// specific stack/label order, arrange/sort the rows in R before sending,
+// e.g. by an ordered factor's level order.
 //   height, width, margin : standard sizing overrides
 
 // ---- persistent setup (created once, reused across re-renders) --------
 
-var margin = options.margin || { top: 60, right: 20, bottom: 30, left: 70 };
+var margin = (options && options.margin) || { top: 60, right: 20, bottom: 30, left: 70 };
 
 var g = svg.select("g.plot-area");
 if (g.empty()) {
@@ -73,10 +72,12 @@ r2d3.onRender(function(data, svg, width, height, options) {
   // ---- reshape long data into wide (one row per `name`, one column per competitor) ----
 
   var names = Array.from(new Set(data.map(function(d) { return d.name; })));
-  var inferredCompetitors = Array.from(new Set(data.map(function(d) { return d.competitor; })));
-  var competitors = (Array.isArray(options.competitors) && options.competitors.length > 0)
-    ? options.competitors
-    : inferredCompetitors;
+  // Competitor order/names come purely from `data` now — no separate
+  // options.competitors channel that could desync from the actual rows
+  // being rendered. Order is preserved as first-seen in the data array;
+  // if `competitor` is an ordered factor in R, sort/arrange df_plt() by
+  // that factor before sending so first-seen order matches factor order.
+  var competitors = Array.from(new Set(data.map(function(d) { return d.competitor; })));
 
   var innerWidth = width - margin.left - (margin.right || 20);
   var innerHeight = height - margin.top - margin.bottom;
@@ -140,21 +141,22 @@ r2d3.onRender(function(data, svg, width, height, options) {
     .attr("x1", margin.left + proportionScale(0.5))
     .attr("x2", margin.left + proportionScale(0.5));
 
-  // ---- competitor name labels: two white boxes sitting in the top
-  // margin, above all bars (not tied to any single category row).
-  // Horizontally centered at 25% and 75% of the proportion scale —
-  // i.e. roughly over whichever competitor's territory typically
-  // dominates that side of a 2-competitor stack. firstCompetitor (first
-  // in stack order, segment[0] side) labels the 25% mark; lastCompetitor
-  // (last in stack order, segment[1] side) labels the 75% mark. ----
+  // ---- competitor name labels: white boxes sitting in the top margin,
+  // above all bars (not tied to any single category row). Normally two
+  // boxes, horizontally centered at 25% and 75% of the proportion scale.
+  // Bye weeks (post-season, no opponent) only have one competitor in the
+  // data at all — in that case render a single box centered at 50%
+  // instead of duplicating the same name into both slots. ----
 
   var firstCompetitor = competitors[0];
   var lastCompetitor = competitors[competitors.length - 1];
 
-  var labelBoxData = [
-    { competitor: firstCompetitor, xFrac: 0.25, anchor: "first" },
-    { competitor: lastCompetitor, xFrac: 0.75, anchor: "last" }
-  ];
+  var labelBoxData = (competitors.length <= 1)
+    ? [{ competitor: firstCompetitor, xFrac: 0.5, anchor: "only" }]
+    : [
+        { competitor: firstCompetitor, xFrac: 0.25, anchor: "first" },
+        { competitor: lastCompetitor, xFrac: 0.75, anchor: "last" }
+      ];
 
   var labelFontSize = 19;
   var labelBoxPadding = 8;
@@ -165,6 +167,8 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
   var labelItems = labelsG.selectAll("g.competitor-label")
     .data(labelBoxData, function(d) { return d.anchor; });
+
+  labelItems.exit().remove();
 
   var labelEnter = labelItems.enter()
     .append("g")

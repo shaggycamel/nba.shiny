@@ -57,6 +57,6 @@ plot_data_prep <- function(df_base, rv_carry_thru) {
     mutate(
       name = ordered(name, c("reb", "blk", "stl", "tov", "ast", "pts", "fg3_m", "fg_pct", "ft_pct", "dd2", "td3")),
       name = fct_drop(name)
-    )
-  # CHECK THIS ORDER IS REETAINED IN PLOT
+    ) |>
+    arrange(competitor, name)
 }
