@@ -132,8 +132,8 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
         df <- filter(df, free_agent)
       }
 
+      # FILTER TEAM OR PLAYER
       if (!is_null(input$team_player_names)) {
-        # FILTER TEAM OR PLAYER
         if (input$team_player_switch) {
           df <- filter(df, team_id %in% input$team_player_names)
         } else {
@@ -145,7 +145,7 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
       df <- df |>
         left_join(
           df |>
-            pivot_longer(any_of(cats()), names_to = "category") |>
+            pivot_longer(cols = any_of(cats()), names_to = "category") |>
             mutate(
               rank = case_when(
                 category == "tov" ~ percent_rank(-value),
@@ -196,7 +196,9 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
       # Column formatting
       col_fmt <- map(set_names(c("min", cats())), \(x) {
         colDef(style = function(value) {
-          if (value == if (x == "tov") min(df[[x]], na.rm = TRUE) else max(df[[x]], na.rm = TRUE)) {
+          vals <- df[[x]][is.finite(df[[x]])]
+          print(vals)
+          if (value == if (x == "tov") min(vals, na.rm = TRUE) else max(vals, na.rm = TRUE)) {
             list(background = "lightgreen", fontWeight = "bold")
           }
         })
