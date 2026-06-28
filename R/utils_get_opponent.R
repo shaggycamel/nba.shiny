@@ -11,6 +11,9 @@ get_opponent <- function(rv_carry_thru, mup) {
     filter(competitor_id == rv_carry_thru$competitor_id, matchup_period == mup) |>
     pull(opponent_id)
 
+  # protect against id being interger(0)
+  id <- if (length(id) == 0) NA else id
+
   name <- pluck(
     ls_fty_lookup,
     "cp_id_to_name",

@@ -27,7 +27,7 @@ mod_h2h_ui <- function(id) {
       card(
         height = 1400,
         fill = FALSE,
-        card(full_screen = TRUE, min_height = 500, max_height = 700, plotlyOutput(ns("stat_plot"))),
+        card(full_screen = TRUE, min_height = 500, max_height = 700, d3Output(ns("stat_plot"))),
         card(full_screen = TRUE, min_height = 200, max_height = 650, reactableOutput(ns("game_table")))
       ),
       fillable = TRUE,
@@ -44,7 +44,15 @@ mod_h2h_ui <- function(id) {
 #'
 #' @noRd
 #'
-mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger) {
+mod_h2h_server <- function(
+  id,
+  rv_carry_thru,
+  rv_alter_team,
+  rv_alter_team_modal_vals,
+  rv_alter_team_trigger,
+  rv_snapshot_log,
+  rv_snapshot_trigger
+) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -75,7 +83,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
           deframe()
       )
     }) |>
-      bindEvent(rv_carry_thru$fty_parameters_met)
+      bindEvent(rv_carry_thru$fty_parameters_met, rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
     # Date picker pin_date
     observe({
@@ -98,7 +106,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         max = matchup_end
       )
     }) |>
-      bindEvent(input$matchup, ignoreInit = TRUE)
+      bindEvent(input$matchup, rv_carry_thru$league_id, rv_carry_thru$competitor_id, ignoreInit = TRUE)
 
     observe({
       req(df_base())
@@ -121,8 +129,8 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
           deframe(),
         selected = players_already_hl
       )
-    })
-    # Should a bindEvent be here???
+    }) |>
+      bindEvent(rv_alter_team(), rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
     observe({
       req(opponent())
@@ -205,12 +213,9 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     # Snapshot config --------------------------------------------------------
 
-    snapshot_log <- reactiveVal(list())
-    snapshot_trigger <- reactiveVal(0L)
-    pending_snapshot <- reactiveVal(NULL)
-
+    rv_snapshot_pending <- reactiveVal(NULL)
     observe({
-      snapshot_trigger(snapshot_trigger() + 1)
+      rv_snapshot_trigger(rv_snapshot_trigger() + 1)
       ls_snapshot <- reactiveValuesToList(input)
       ls_snapshot <- list(
         "matchup" = ls_snapshot$matchup,
@@ -221,13 +226,13 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
         "alter_team" = rv_alter_team()
       )
 
-      pending_snapshot(ls_snapshot)
+      rv_snapshot_pending(ls_snapshot)
 
       showModal(
         modalDialog(
           title = NULL,
           {
-            ti <- textInput(ns("snapshot_name"), NULL, value = paste0("snapshot_", snapshot_trigger()))
+            ti <- textInput(ns("snapshot_name"), NULL, value = paste0("snapshot_", rv_snapshot_trigger()))
             ti$children[[2]]$attribs$maxlength <- 20
             ti
           },
@@ -249,7 +254,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     observe({
       name_raw <- str_trim(input$snapshot_name)
-      is_dupe <- name_raw %in% names(snapshot_log())
+      is_dupe <- name_raw %in% names(rv_snapshot_log())
       toggleState(id = "confirm_snapshot_name", condition = nzchar(name_raw) && !is_dupe)
       if (is_dupe) {
         output$snapshot_error_msg <- renderText("Snapshot id already exists...")
@@ -261,18 +266,18 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       bindEvent(input$snapshot_name)
 
     observe({
-      current <- snapshot_log()
-      current[[str_trim(input$snapshot_name)]] <- pending_snapshot()
-      snapshot_log(current)
-      pending_snapshot(NULL)
+      current <- rv_snapshot_log()
+      current[[str_trim(input$snapshot_name)]] <- rv_snapshot_pending()
+      rv_snapshot_log(current)
+      rv_snapshot_pending(NULL)
       output$snapshot_error_msg <- NULL
       removeModal()
     }) |>
       bindEvent(input$confirm_snapshot_name)
 
     output$snapshot_table <- renderReactable({
-      req(length(snapshot_log()) > 0)
-      snapshots <- names(snapshot_log())
+      req(length(rv_snapshot_log()) > 0)
+      snapshots <- names(rv_snapshot_log())
 
       df <- tibble(
         snap = snapshots,
@@ -322,14 +327,14 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
     })
 
     observe({
-      current <- snapshot_log()
+      current <- rv_snapshot_log()
       current[[input$delete_snapshot]] <- NULL
-      snapshot_log(current)
+      rv_snapshot_log(current)
     }) |>
       bindEvent(input$delete_snapshot)
 
     observe({
-      vals <- snapshot_log()[[input$select_snapshot]]
+      vals <- rv_snapshot_log()[[input$select_snapshot]]
       updateSelectInput(session, "matchup", selected = vals$matchup)
       updateSelectInput(
         session,
@@ -355,7 +360,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
       req(input$matchup > 0)
       get_opponent(rv_carry_thru, as.numeric(input$matchup))
     }) |>
-      bindEvent(input$matchup)
+      bindEvent(input$matchup, rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
     df_base <- reactive({
       req(opponent())
@@ -397,22 +402,13 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 
     # Plot -------------------------------------------------------------------
 
-    output$stat_plot <- renderPlotly({
+    output$stat_plot <- renderD3({
       req(df_plt())
 
-      ggplotly(
-        df_plt() |>
-          ggplot(aes(x = name, y = value, fill = competitor, text = label)) +
-          geom_col(position = "fill") +
-          geom_hline(aes(yintercept = 0.5)) +
-          # scale_y_continuous(labels = scales::label_percent()) +
-          scale_fill_brewer(type = "qual", palette = "Set2", direction = -1) +
-          theme_bw() +
-          labs(x = NULL, y = NULL),
-        tooltip = "text"
-      ) |>
-        layout(hovermode = "x") |>
-        config(displayModeBar = FALSE)
+      r2d3(
+        data = df_plt(),
+        script = app_sys("d3/h2h_stat_plot/h2h_stat_plot.js")
+      )
     })
 
     # Game Table -------------------------------------------------------------
@@ -472,7 +468,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 # library(shinyWidgets)
 # library(shinyjs)
 # library(reactable)
-# library(plotly)
+# library(r2d3)
 # library(stringr)
 # library(purrr)
 # library(tibble)
@@ -481,6 +477,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 # library(scales)
 # library(lubridate)
 # library(rlang)
+# library(forcats)
 
 # load("data/cur_date.rda")
 # load("data/ls_fty_lookup.rda")
@@ -490,6 +487,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 # load("data/dfs_h2h_past.rda")
 # load("data/dfs_h2h_future.rda")
 
+# source("R/app_config.R")
 # source("R/mod_h2h_fct_base_data_prep.R")
 # source("R/mod_h2h_fct_plot_data_prep.R")
 # source("R/mod_h2h_fct_table_data_prep.R")
@@ -499,6 +497,7 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 # source("R/mod_h2h_fct_base_data_prep.R")
 
 # ui <- page_fluid(
+#   shinyjs::useShinyjs(),
 #   mod_h2h_ui("h2h_1")
 # )
 
@@ -506,10 +505,10 @@ mod_h2h_server <- function(id, rv_carry_thru, rv_alter_team, rv_alter_team_modal
 #   rv_carry_thru <- reactiveValues(
 #     fty_parameters_met = TRUE,
 #     platform = "ESPN",
-#     league_id = 1382487116,
-#     competitor_id = 6,
-#     competitor_name = "britney_spears",
-#     cur_matchup_period = 99
+#     league_id = 95537,
+#     competitor_id = 26,
+#     competitor_name = "Daisies",
+#     cur_matchup_period = 17
 #   )
 #   rv_alter_team <- reactiveVal(list())
 #   rv_alter_team_modal_vals <- reactiveValues()

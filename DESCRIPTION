@@ -12,6 +12,7 @@ Imports:
     config,
     DBI,
     dplyr,
+    forcats,
     ggplot2,
     glue,
     golem,
@@ -20,6 +21,7 @@ Imports:
     lubridate,
     plotly,
     purrr,
+    r2d3,
     reactable,
     rlang,
     RPostgres,
@@ -38,4 +40,4 @@ Config/testthat/edition: 3
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.0.0

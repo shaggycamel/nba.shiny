@@ -29,9 +29,9 @@ plot_data_prep <- function(df_base, rv_carry_thru) {
           summarise(
             #fmt: skip
             label = paste0(
-                  "Total - ", round(sum(!!m_col, na.rm = TRUE), 0), "/", round(sum(!!a_col, na.rm = TRUE), 0), " (", label_percent(accuracy = 0.01)(sum(!!m_col, na.rm = TRUE)/sum(!!a_col, na.rm = TRUE)),")\n\n",
-                  paste(str_c(player_name, " - ", round(!!m_col, 0), "/", round(!!a_col, 0)), collapse = "\n")
-                ),
+              "Total - ", round(sum(!!m_col, na.rm = TRUE), 0), "/", round(sum(!!a_col, na.rm = TRUE), 0), " (", label_percent(accuracy = 0.01)(sum(!!m_col, na.rm = TRUE)/sum(!!a_col, na.rm = TRUE)),")\n\n",
+              paste(str_c(player_name, " - ", round(!!m_col, 0), "/", round(!!a_col, 0)), collapse = "\n")
+            ),
             name = str_c(col_string, "_pct"),
             value = sum(!!m_col, na.rm = TRUE) / sum(!!a_col, na.rm = TRUE),
             .by = competitor
@@ -53,5 +53,10 @@ plot_data_prep <- function(df_base, rv_carry_thru) {
             .by = c(competitor, name)
           )
       )
-    })()
+    })() |>
+    mutate(
+      name = ordered(name, c("reb", "blk", "stl", "tov", "ast", "pts", "fg3_m", "fg_pct", "ft_pct", "dd2", "td3")),
+      name = fct_drop(name)
+    ) |>
+    arrange(competitor, name)
 }

@@ -16,7 +16,14 @@ mod_modal_login_ui <- function(id) {
 
 #' @noRd
 #'
-mod_modal_login_server <- function(id, rv_carry_thru, rv_switch_league_counter) {
+mod_modal_login_server <- function(
+  id,
+  rv_carry_thru,
+  rv_switch_league_counter,
+  rv_alter_team,
+  rv_snapshot_log,
+  rv_snapshot_trigger
+) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 

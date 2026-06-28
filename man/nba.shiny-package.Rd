@@ -11,4 +11,9 @@ A Shiny application for NBA Fantasy
 \author{
 \strong{Maintainer}: Oliver Eaton \email{eat_fred@proton.me}
 
+Authors:
+\itemize{
+  \item Oliver Eaton \email{eat_fred@proton.me}
+}
+
 }

@@ -62,8 +62,8 @@ base_data_prep <- function(input, rv_carry_thru, opponent, rv_alter_team) {
         ordered(
           competitor,
           c(
-            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(opponent()$id)),
-            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(rv_carry_thru$competitor_id))
+            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(rv_carry_thru$competitor_id)),
+            pluck(ls_fty_lookup, "cp_id_to_name", l_id, as.character(opponent()$id))
           )
         )
       }

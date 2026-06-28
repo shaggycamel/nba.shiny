@@ -22,7 +22,7 @@ mod_league_overview_ui <- function(id) {
       card(
         height = 1250,
         fill = FALSE,
-        card(full_screen = TRUE, min_height = 500, max_height = 600, plotlyOutput(ns("fty_lo_plt"))),
+        card(full_screen = TRUE, min_height = 500, max_height = 600, r2d3::d3Output(ns("fty_lo_plt"))),
         card(full_screen = TRUE, min_height = 200, max_height = 650, reactableOutput(ns("tbl_recent_activity")))
       )
     )
@@ -64,11 +64,16 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         pluck(dfs_fty_recent_activity, as.character(rv_carry_thru$league_id))
       }
     }) |>
-      bindEvent(rv_carry_thru$fty_parameters_met, input$fty_lg_ov_just_h2h)
+      bindEvent(
+        rv_carry_thru$fty_parameters_met,
+        input$fty_lg_ov_just_h2h,
+        rv_carry_thru$league_id,
+        rv_carry_thru$competitor_id
+      )
 
     # Plot -------------------------------------------------------------------
 
-    output$fty_lo_plt <- renderPlotly({
+    output$fty_lo_plt <- r2d3::renderD3({
       req(rv_carry_thru$fty_parameters_met, df_lo())
 
       plot_col <- input$fty_lg_ov_cat
@@ -77,118 +82,112 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
       }
 
       req(plot_col %in% colnames(df_lo()))
-      plt <- if (input$fty_lg_ov_cum_toggle) {
+      text_col <- paste0(str_remove(plot_col, "_rank"), "_text")
+
+      # Same branch as before: W2W uses df_lo() directly (already
+      # cumulative-style), Cum recomputes cumsum() per competitor off the
+      # sparse df_lo_pt() rows only.
+      df_plot <- if (input$fty_lg_ov_cum_toggle) {
         df_lo() |>
-          ggplot(aes(x = matchup_sigmoid, y = !!sym(plot_col), colour = competitor_name)) +
-          geom_line(linewidth = 0.5) +
-          geom_point(aes(text = !!sym(paste0(str_remove(plot_col, "_rank"), "_text"))), data = df_lo_pt(), size = 2) +
-          scale_x_continuous(breaks = sort(unique(df_lo_pt()$matchup)), labels = sort(unique(df_lo_pt()$matchup))) +
-          labs(
-            title = paste("Competitor Category Ranking:", input$fty_lg_ov_cat),
-            x = "Matchup Period",
-            y = input$fty_lg_ov_cat
-          ) +
-          theme_bw()
+          mutate(is_point = as.integer(matchup_sigmoid) == matchup_sigmoid)
       } else {
         df_lo_pt() |>
           arrange(matchup) |>
           mutate(across(-matches("_id$|^matchup"), \(x) cumsum(x)), .by = competitor_name) |>
-          ggplot(aes(x = matchup_sigmoid, y = !!sym(plot_col), colour = competitor_name)) +
-          geom_path() +
-          scale_x_continuous(
-            breaks = sort(unique(df_lo_pt()$matchup)),
-            labels = sort(unique(df_lo_pt()$matchup))
-          ) +
-          labs(
-            title = paste("Competitor Category Ranking:", input$fty_lg_ov_cat),
-            x = "Matchup Period",
-            y = input$fty_lg_ov_cat
-          ) +
-          theme_bw()
+          mutate(is_point = TRUE) # every row is a real matchup period in this branch
       }
 
-      if (input$fty_lg_ov_rank_toggle) {
-        plt <- plt + scale_y_reverse(n.breaks = length(unique(df_lo()$competitor_id)))
-      }
+      req(plot_col %in% colnames(df_plot), text_col %in% colnames(df_plot) || !input$fty_lg_ov_cum_toggle)
 
-      n_competitors <- length(unique(df_lo()$competitor_id))
-      plt <- ggplotly(plt, tooltip = "text") |>
-        # Suppress tooltips on line traces (first n traces), keep points
-        style(hoverinfo = "none", traces = seq_len(n_competitors)) |>
-        # Apply hovertemplate to point traces so HTML renders
-        style(
-          hovertemplate = ~ paste0(fg3_m_text, "<extra></extra>"),
-          traces = if (!is.na(opponent()$id)) seq_len(n_competitors) + n_competitors else seq_len(n_competitors)
-        ) |>
-        layout(xaxis = list(fixedrange = TRUE), yaxis = list(fixedrange = TRUE)) |>
-        rangeslider(
-          start = ifelse(!input$fty_lg_ov_cum_toggle, 1, max(df_lo_pt()$matchup) - 5.1),
-          end = max(df_lo_pt()$matchup) + 0.1,
-          range = list(min(df_lo_pt()$matchup) - 0.2, max(df_lo_pt()$matchup) + 0.2)
-        ) |>
-        config(displayModeBar = FALSE)
-
-      if (input$fty_lg_ov_just_h2h) {
-        just_h2h <- setdiff(
-          1:length(plt$x$data),
-          str_which(
-            map_chr(plt$x$data, \(x) x$name),
-            paste0(rv_carry_thru$competitor_name, if (!is.na(opponent()$id)) str_c("|", opponent()$name) else NULL)
-          )
+      # Reshape to the generalized value/value_text contract the JS expects,
+      # so it never needs to know the actual category column name.
+      df_send <- df_plot |>
+        transmute(
+          competitor_name,
+          matchup_sigmoid,
+          matchup,
+          is_point,
+          value = !!sym(plot_col),
+          value_text = if (text_col %in% colnames(df_plot)) !!sym(text_col) else NA_character_
         )
 
-        plt <- style(plt, visible = "legendonly", traces = just_h2h)
+      highlight_only <- if (input$fty_lg_ov_just_h2h) {
+        c(rv_carry_thru$competitor_name, if (!is.na(opponent()$id)) opponent()$name else NULL)
+      } else {
+        list() # empty -> JS shows everyone at full opacity
       }
-      plt
+
+      r2d3::r2d3(
+        data = df_send,
+        script = app_sys("d3/league_overview/league_overview.js"),
+        options = list(
+          is_rank = input$fty_lg_ov_rank_toggle,
+          title = paste("Competitor Category Ranking:", input$fty_lg_ov_cat),
+          competitors = I(unique(df_send$competitor_name)), # TODO: replace with a stable explicit order if available
+          highlight_only = I(highlight_only)
+        )
+      )
     })
 
     # Table ------------------------------------------------------------------
 
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    observe({
+      rv_tbl_sort_order(getReactableState("league-overview-table", "sorted", session = session))
+    }) |>
+      bindEvent(
+        getReactableState("league-overview-table", "sorted", session = session),
+        ignoreNULL = FALSE
+      )
+
+    # Column formatting
+    col_fmt_recent_activity <- list(
+      player = colDef(name = "Player"),
+      competitor_id = colDef(show = FALSE),
+      competitor_name = colDef(
+        name = "Competitor",
+        filterInput = \(values, name) {
+          tags$select(
+            onchange = sprintf(
+              "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+              name
+            ),
+            tags$option(value = "", ""),
+            lapply(unique(values), tags$option),
+            "aria-label" = sprintf("Filter %s", name),
+            style = "width: 100%; height: 28px;"
+          )
+        }
+      ),
+      action = colDef(
+        name = "Action",
+        filterInput = \(values, name) {
+          tags$select(
+            onchange = sprintf(
+              "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+              name
+            ),
+            tags$option(value = "", ""),
+            lapply(unique(values), tags$option),
+            "aria-label" = sprintf("Filter %s", name),
+            style = "width: 100%; height: 28px;"
+          )
+        }
+      ),
+      timestamp = colDef(name = "Time (EST)", cell = \(value) {
+        format(value, "%a %d/%m %H:%M", tz = "America/New_York")
+      })
+    )
+
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    cur_tbl_sort_order <- reactive(getReactableState("tbl_recent_activity", "sorted", session = session))
+    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |>
+      bindEvent(cur_tbl_sort_order())
+
     output$tbl_recent_activity <- renderReactable({
       req(df_tbl())
-
-      # Table state
-      rv_tbl_sort_order <- reactiveVal()
-      cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
-      observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
-
-      col_fmt <- list(
-        player = colDef(name = "Player"),
-        competitor_id = colDef(show = FALSE),
-        competitor_name = colDef(
-          name = "Competitor",
-          filterInput = \(values, name) {
-            tags$select(
-              onchange = sprintf(
-                "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
-                name
-              ),
-              tags$option(value = "", ""),
-              lapply(unique(values), tags$option),
-              "aria-label" = sprintf("Filter %s", name),
-              style = "width: 100%; height: 28px;"
-            )
-          }
-        ),
-        action = colDef(
-          name = "Action",
-          filterInput = \(values, name) {
-            tags$select(
-              onchange = sprintf(
-                "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
-                name
-              ),
-              tags$option(value = "", ""),
-              lapply(unique(values), tags$option),
-              "aria-label" = sprintf("Filter %s", name),
-              style = "width: 100%; height: 28px;"
-            )
-          }
-        ),
-        timestamp = colDef(name = "Time (EST)", cell = \(value) {
-          format(value, "%a %d/%m %H:%M", tz = "America/New_York")
-        })
-      )
 
       reactable(
         df_tbl(),
@@ -199,7 +198,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         filterable = TRUE,
         defaultSorted = list(timestamp = "desc"),
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
-        columns = col_fmt,
+        columns = col_fmt_recent_activity,
         elementId = "league-overview-table"
       )
     })
