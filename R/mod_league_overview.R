@@ -64,7 +64,12 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         pluck(dfs_fty_recent_activity, as.character(rv_carry_thru$league_id))
       }
     }) |>
-      bindEvent(rv_carry_thru$fty_parameters_met, input$fty_lg_ov_just_h2h)
+      bindEvent(
+        rv_carry_thru$fty_parameters_met,
+        input$fty_lg_ov_just_h2h,
+        rv_carry_thru$league_id,
+        rv_carry_thru$competitor_id
+      )
 
     # Plot -------------------------------------------------------------------
 
@@ -126,51 +131,63 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
 
     # Table ------------------------------------------------------------------
 
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    observe({
+      rv_tbl_sort_order(getReactableState("league-overview-table", "sorted", session = session))
+    }) |>
+      bindEvent(
+        getReactableState("league-overview-table", "sorted", session = session),
+        ignoreNULL = FALSE
+      )
+
+    # Column formatting
+    col_fmt_recent_activity <- list(
+      player = colDef(name = "Player"),
+      competitor_id = colDef(show = FALSE),
+      competitor_name = colDef(
+        name = "Competitor",
+        filterInput = \(values, name) {
+          tags$select(
+            onchange = sprintf(
+              "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+              name
+            ),
+            tags$option(value = "", ""),
+            lapply(unique(values), tags$option),
+            "aria-label" = sprintf("Filter %s", name),
+            style = "width: 100%; height: 28px;"
+          )
+        }
+      ),
+      action = colDef(
+        name = "Action",
+        filterInput = \(values, name) {
+          tags$select(
+            onchange = sprintf(
+              "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+              name
+            ),
+            tags$option(value = "", ""),
+            lapply(unique(values), tags$option),
+            "aria-label" = sprintf("Filter %s", name),
+            style = "width: 100%; height: 28px;"
+          )
+        }
+      ),
+      timestamp = colDef(name = "Time (EST)", cell = \(value) {
+        format(value, "%a %d/%m %H:%M", tz = "America/New_York")
+      })
+    )
+
+    # Table state
+    rv_tbl_sort_order <- reactiveVal()
+    cur_tbl_sort_order <- reactive(getReactableState("tbl_recent_activity", "sorted", session = session))
+    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |>
+      bindEvent(cur_tbl_sort_order())
+
     output$tbl_recent_activity <- renderReactable({
       req(df_tbl())
-
-      # Table state
-      rv_tbl_sort_order <- reactiveVal()
-      cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
-      observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
-
-      col_fmt <- list(
-        player = colDef(name = "Player"),
-        competitor_id = colDef(show = FALSE),
-        competitor_name = colDef(
-          name = "Competitor",
-          filterInput = \(values, name) {
-            tags$select(
-              onchange = sprintf(
-                "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
-                name
-              ),
-              tags$option(value = "", ""),
-              lapply(unique(values), tags$option),
-              "aria-label" = sprintf("Filter %s", name),
-              style = "width: 100%; height: 28px;"
-            )
-          }
-        ),
-        action = colDef(
-          name = "Action",
-          filterInput = \(values, name) {
-            tags$select(
-              onchange = sprintf(
-                "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
-                name
-              ),
-              tags$option(value = "", ""),
-              lapply(unique(values), tags$option),
-              "aria-label" = sprintf("Filter %s", name),
-              style = "width: 100%; height: 28px;"
-            )
-          }
-        ),
-        timestamp = colDef(name = "Time (EST)", cell = \(value) {
-          format(value, "%a %d/%m %H:%M", tz = "America/New_York")
-        })
-      )
 
       reactable(
         df_tbl(),
@@ -181,7 +198,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         filterable = TRUE,
         defaultSorted = list(timestamp = "desc"),
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
-        columns = col_fmt,
+        columns = col_fmt_recent_activity,
         elementId = "league-overview-table"
       )
     })

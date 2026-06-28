@@ -61,6 +61,11 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
     observe({
       req(rv_carry_thru$fty_parameters_met)
 
+      updateSwitchInput(session, "team_player_switch", value = TRUE)
+      updateSelectInput(session, "team_player_names", selected = NULL, choices = ls_nba_teams)
+      updateRadioButtons(session, "window", selected = 7)
+      updateSliderInput(session, "minute_filter", value = 20)
+      updateSwitchInput(session, "log_inj_toggle", value = TRUE)
       updateSelectizeInput(
         session,
         "excels_at_filter",
@@ -71,7 +76,7 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
         )
       )
     }) |>
-      bindEvent(rv_carry_thru$fty_parameters_met) # Bind event of when league is swapped too
+      bindEvent(rv_carry_thru$fty_parameters_met, rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
     # On team player switch...
     observe({
@@ -176,7 +181,8 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
     # Table state
     rv_tbl_sort_order <- reactiveVal()
     cur_tbl_sort_order <- reactive(getReactableState("comparison_table", "sorted", session = session))
-    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |> bindEvent(cur_tbl_sort_order())
+    observe(rv_tbl_sort_order(cur_tbl_sort_order())) |>
+      bindEvent(cur_tbl_sort_order())
 
     output$comparison_table <- renderReactable({
       # df creation
@@ -197,7 +203,6 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
       col_fmt <- map(set_names(c("min", cats())), \(x) {
         colDef(style = function(value) {
           vals <- df[[x]][is.finite(df[[x]])]
-          print(vals)
           if (value == if (x == "tov") min(vals, na.rm = TRUE) else max(vals, na.rm = TRUE)) {
             list(background = "lightgreen", fontWeight = "bold")
           }
@@ -304,40 +309,40 @@ mod_player_comparison_server <- function(id, rv_carry_thru, rv_copy_teams) {
 ## To be copied in the server
 # mod_player_comparison_server("player_comparison_1")
 
-library(shiny)
-library(bslib)
-library(reactable)
-library(stringr)
-library(rlang)
-library(purrr)
-library(dplyr)
-library(tibble)
-library(tidyr)
-library(shinyWidgets)
-library(later)
-library(glue)
+# library(shiny)
+# library(bslib)
+# library(reactable)
+# library(stringr)
+# library(rlang)
+# library(purrr)
+# library(dplyr)
+# library(tibble)
+# library(tidyr)
+# library(shinyWidgets)
+# library(later)
+# library(glue)
 
-load("data/dfs_player_comparison.rda")
-load("data/ls_lo_lg_cats.rda")
-load("data/ls_nba_teams.rda")
-load("data/ls_injuries.rda")
-load("data/ls_player_game_log.rda")
+# load("data/dfs_player_comparison.rda")
+# load("data/ls_lo_lg_cats.rda")
+# load("data/ls_nba_teams.rda")
+# load("data/ls_injuries.rda")
+# load("data/ls_player_game_log.rda")
 
-ui <- page_fluid(
-  mod_player_comparison_ui("player_comparison_1")
-)
+# ui <- page_fluid(
+#   mod_player_comparison_ui("player_comparison_1")
+# )
 
-server <- function(input, output, session) {
-  rv_carry_thru <- reactiveValues(
-    fty_parameters_met = TRUE,
-    platform = "ESPN",
-    league_id = 1382487116,
-    competitor_id = 6,
-    competitor_name = "britney_spears",
-    cur_matchup_period = 11
-  )
+# server <- function(input, output, session) {
+#   rv_carry_thru <- reactiveValues(
+#     fty_parameters_met = TRUE,
+#     platform = "ESPN",
+#     league_id = 1382487116,
+#     competitor_id = 6,
+#     competitor_name = "britney_spears",
+#     cur_matchup_period = 11
+#   )
 
-  mod_player_comparison_server("player_comparison_1", rv_carry_thru, reactiveVal(c("ATL" = 1610612737)))
-}
+#   mod_player_comparison_server("player_comparison_1", rv_carry_thru, reactiveVal(c("ATL" = 1610612737)))
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)

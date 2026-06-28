@@ -55,10 +55,16 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         min = mup_min_max_dts$matchup_start,
         max = mup_min_max_dts$matchup_end
       )
-    }) |>
-      bindEvent(rv_carry_thru$fty_parameters_met) # Bind event of when league is swapped too
 
-    # ADD post_fantasy to: dfs_fty_schedule
+      updateRadioButtons(session, "pin_dir", choices = c("-", "+"), selected = "+", inline = TRUE)
+    }) |>
+      bindEvent(rv_carry_thru$fty_parameters_met, rv_carry_thru$league_id, rv_carry_thru$competitor_id)
+
+    observe({
+      req(df_tbl())
+      updateReactable("schedule-table", data = df_tbl(), selected = NA)
+    }) |>
+      bindEvent(rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
     # On matchup_selection change...
     observe({
