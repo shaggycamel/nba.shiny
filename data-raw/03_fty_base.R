@@ -2,8 +2,8 @@
 
 df_fty_base <-
   tbl(db_con(), I("fty.fty_base_vw")) |>
-  filter(season == cur_season) |>
-  filter(!league_id %in% c(24608)) |> # DELTE
+  filter(season == cur_season, customer_id = cus_id) |>
+  filter(!league_id %in% c(24608)) |> # DELETE
   arrange(str_to_lower(league_name), str_to_lower(competitor_name)) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
@@ -13,6 +13,7 @@ df_fty_base <-
 
 df_fty_cats <-
   tbl(db_con(), I("fty.fty_categories_vw")) |>
+  filter(customer_id == cus_id | is.na(customer_id)) |>
   filter(season == cur_season | is.na(league_id)) |>
   filter(!league_id %in% c(24608) | is.na(league_id)) |> # DELTE
   as_tibble() |>
@@ -22,7 +23,7 @@ df_fty_cats <-
 
 dfs_fty_schedule <-
   tbl(db_con(), I("fty.fty_league_schedule_vw")) |>
-  filter(season == cur_season) |>
+  filter(season == cur_season, customer_id == cus_id) |>
   filter(!league_id %in% c(24608)) |> # DELETE
   as_tibble() |>
   mutate(
@@ -47,7 +48,7 @@ dfs_fty_schedule <-
 
 dfs_fty_roster <-
   tbl(db_con(), I("fty.fty_team_roster_schedule_vw")) |>
-  filter(season == cur_season) |>
+  filter(season == cur_season, customer_id == cus_id) |>
   filter(!league_id %in% c(24608)) |> # DELETE
   # filter(assigned_date < cur_date) |> # for testing purposes
   select(-c(competitor_name, opponent_name)) |>
@@ -66,7 +67,7 @@ dfs_fty_roster <-
 
 df_fty_box_score <-
   tbl(db_con(), I("fty.fty_matchup_box_score_vw")) |>
-  filter(season == cur_season) |>
+  filter(season == cur_season, customer_id == cus_id) |>
   filter(!league_id %in% c(24608)) |> # DELETE
   # filter(matchup <= 11) |> # for testing purposes
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
@@ -82,6 +83,7 @@ df_fty_box_score <-
 
 dfs_fty_free_agents <-
   tbl(db_con(), I("fty.fty_free_agents_vw")) |>
+  filter(, customer_id == cus_id) |>
   filter(!league_id %in% c(24608)) |> # DELETE
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
@@ -93,7 +95,7 @@ dfs_fty_free_agents <-
 
 dfs_fty_recent_activity <-
   tbl(db_con(), I("fty.fty_recent_activity_vw")) |>
-  filter(season == cur_season) |>
+  filter(season == cur_season, customer_id == cus_id) |>
   filter(!league_id %in% c(24608)) |> # DELETE
   select(league_id, competitor_id, competitor_name, player, action, timestamp) |>
   as_tibble() |>
