@@ -62,7 +62,7 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
 
     observe({
       req(df_tbl())
-      updateReactable("schedule-table", data = df_tbl(), selected = NA)
+      updateReactable("schedule_table", data = df_tbl(), selected = NA)
     }) |>
       bindEvent(rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
@@ -148,36 +148,38 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
     }) |>
       bindEvent(input$matchup_selection)
 
-    # Pin index calc
-    pin_ix <- reactive({
+    # The matchup week, with a column for every day rather than only the days
+    # that have games - see fill_missing_days()
+    df_week <- reactive({
       req(nrow(mup_dts()) > 0)
-      as.integer(difftime(input$pin_date, mup_dts()$matchup_start)) + 3
-    }) |>
-      bindEvent(input$pin_date)
-
-    # Data for reactive table
-    df_tbl <- reactive({
-      req(pin_ix())
-
-      max_range <- as.integer(difftime(mup_dts()$matchup_end, mup_dts()$matchup_start)) + 3
 
       dfs_fty_nba_mup_weeks |>
         pluck(as.character(rv_carry_thru$league_id), input$matchup_selection) |>
+        fill_missing_days(mup_dts()$matchup_start, mup_dts()$matchup_end)
+    })
+
+    # Real date behind each column label - see col_dates_from_labels()
+    col_dates <- reactive(col_dates_from_labels(names(df_week()), mup_dts()$matchup_start))
+
+    # Data for reactive table
+    df_tbl <- reactive({
+      req(nrow(mup_dts()) > 0, input$pin_date)
+
+      pin_cols <- if (input$matchup_selection == "Post Fantasy") {
+        character(0)
+      } else {
+        pin_columns(
+          col_dates(),
+          input$pin_date,
+          mup_dts()$matchup_start,
+          mup_dts()$matchup_end,
+          input$pin_dir
+        )
+      }
+
+      df_week() |>
         rowwise() |>
-        mutate(
-          Pin = sum(c_across(
-            if (
-              (input$pin_date == mup_dts()$matchup_start & input$pin_dir == "-") |
-                input$matchup_selection == "Post Fantasy"
-            ) {
-              0
-            } else if (input$pin_dir == "+") {
-              pin_ix():max_range
-            } else {
-              3:(pin_ix() - 1)
-            }
-          ))
-        ) |>
+        mutate(Pin = sum(c_across(all_of(pin_cols)))) |>
         ungroup()
     }) |>
       bindEvent(input$matchup_selection, input$pin_dir, input$pin_date)
@@ -192,6 +194,9 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
     output$schedule_table <- renderReactable({
       req(df_tbl())
 
+      # Shiny ignores elementId and keys the widget off the namespaced output id
+      tbl_id <- ns("schedule_table")
+
       # Column formatting
       col_fmt <- map(set_names(str_subset(colnames(df_tbl()), "\\/")), \(x) {
         nm <- str_split_1(x, " ")
@@ -199,16 +204,16 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
           header = tags$span(nm[1], tags$br(), nm[2]),
           filterInput = \(values, name) {
             tags$select(
-              onchange = sprintf("Reactable.setFilter('schedule-table', '%s', event.target.value || undefined)", name),
+              onchange = sprintf("Reactable.setFilter('%s', '%s', event.target.value || undefined)", tbl_id, name),
               tags$option(value = "", ""),
               lapply(c(0, 1), tags$option),
               "aria-label" = sprintf("Filter %s", name),
               style = "width: 100%; height: 28px;"
             )
           },
-          style = if (length(str_subset(colnames(df_tbl()), "\\/")) %% 7 > 0 & x %in% tail(colnames(df_tbl()), 2)) {
+          style = if (col_dates()[[x]] > mup_dts()$matchup_end) {
             list(backgroundColor = "#eee5ff94")
-          } else if (parse_date_time(x, orders = "%a (%d/%m)") == input$pin_date) {
+          } else if (col_dates()[[x]] == input$pin_date) {
             list(backgroundColor = "#f1e78e94")
           }
         )
@@ -217,14 +222,14 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         sticky = "left",
         style = list(backgroundColor = "#c1eccaff", fontWeight = "bold"),
         filterInput = \(values, name) {
-          dataListId <- sprintf("%s-%s-list", 'schedule-table', name)
+          dataListId <- sprintf("%s-%s-list", tbl_id, name)
           tagList(
             tags$input(
               type = "text",
               list = dataListId,
               oninput = sprintf(
                 "Reactable.setFilter('%s', '%s', event.target.value || undefined)",
-                'schedule-table',
+                tbl_id,
                 name
               ),
               "aria-label" = sprintf("Filter %s", name),
@@ -267,8 +272,7 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
         pagination = FALSE,
         height = "85vh",
         wrap = TRUE,
-        columns = col_fmt,
-        elementId = "schedule-table"
+        columns = col_fmt
       )
     })
   })

@@ -1,7 +1,7 @@
 # Player box score -------------------------------------------------------
 
 df_nba_player_box_score <-
-  tbl(db_con(), I("nba.nba_player_box_score_vw")) |>
+  tbl(db_con(), I("nba.player_box_score_vw")) |>
   filter(season >= prev_season, season_type == "Regular Season", !is.na(player_id)) |>
   # filter(game_date < cur_date) |> # for testing purposes
   as_tibble() |>
@@ -24,7 +24,7 @@ df_nba_player_box_score <-
 # count(game_id) |> filter(n > 2)
 
 df_nba_schedule <-
-  tbl(db_con(), I("nba.nba_season_segments_vw")) |>
+  tbl(db_con(), I("nba.season_segments_vw")) |>
   filter(season == cur_season, season_type == "Regular Season") |>
   select(begin_date, end_date) |>
   as_tibble() |>
@@ -32,7 +32,7 @@ df_nba_schedule <-
   complete(game_date = seq.Date(min(game_date), max(game_date), by = "day")) |>
   select(game_date) |>
   left_join(
-    tbl(db_con(), I("nba.nba_schedule_vw")) |>
+    tbl(db_con(), I("nba.schedule_vw")) |>
       filter(season == cur_season, season_type == 'Regular Season') |>
       as_tibble(),
     by = join_by(game_date)
@@ -53,7 +53,7 @@ df_nba_schedule <-
 # Might need to do work here when season ends
 
 df_nba_season_segments <-
-  tbl(db_con(), I("nba.nba_season_segments_vw")) |>
+  tbl(db_con(), I("nba.season_segments_vw")) |>
   filter(season >= prev_season) |>
   as_tibble() |>
   (\(df) {
@@ -69,7 +69,7 @@ df_nba_season_segments <-
 
 # Teams ------------------------------------------------------------------
 
-ls_nba_teams <- tbl(db_con(), I("nba.nba_teams_vw")) |>
+ls_nba_teams <- tbl(db_con(), I("nba.teams_vw")) |>
   select(team_slug, team_id) |>
   as_tibble() |>
   mutate(team_id = as.integer(team_id)) |>
@@ -80,7 +80,7 @@ ls_nba_teams <- tbl(db_con(), I("nba.nba_teams_vw")) |>
 
 # Team roster ------------------------------------------------------------
 
-df_nba_roster <- tbl(db_con(), I("nba.nba_team_roster_vw")) |>
+df_nba_roster <- tbl(db_con(), I("nba.team_roster_vw")) |>
   filter(season == cur_season) |>
   # filter(entry_date < cur_date | is.na(entry_date)) |> # for testing purposes
   as_tibble() |>

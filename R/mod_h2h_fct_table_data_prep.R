@@ -39,8 +39,8 @@ grey_player_data_prep <- function(input, df_base, rv_carry_thru, opponent) {
 }
 
 
-table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_ix) {
-  df_base |>
+table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_date) {
+  df_wide <- df_base |>
     arrange(game_date) |>
     select(competitor, player_team, player_id, player_name, inj_status, fmt_date, scheduled_to_play) |>
     distinct() |>
@@ -59,13 +59,31 @@ table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_ix) {
       values_from = scheduled_to_play,
       values_fill = "0"
     ) |>
-    select(-starts_with("NA")) |>
+    select(-starts_with("NA"))
+
+  # Fill before games_remaining is added, so the new columns sort in among the
+  # dates rather than landing after it.
+  matchup_start <- min(df_base$matchup_start, na.rm = TRUE)
+  df_wide <- fill_missing_days(
+    df_wide,
+    matchup_start,
+    max(df_base$matchup_end, na.rm = TRUE),
+    fill = "0"
+  )
+
+  # Select the pinned day onward by name. A pin_date outside the matchup - which
+  # happens for a flush while the date picker catches up with df_base - simply
+  # matches no columns.
+  col_dates <- col_dates_from_labels(names(df_wide), matchup_start)
+  remaining_cols <- names(col_dates)[col_dates >= pin_date]
+
+  df_wide |>
     rowwise() |>
     mutate(
       games_remaining = if (cur_date > unique(na.omit(df_base$matchup_end))) {
         0
       } else {
-        sum(as.numeric(str_remove(c_across((pin_ix + 4):last_col()), "\\*")), na.rm = TRUE)
+        sum(as.numeric(str_remove(c_across(all_of(remaining_cols)), "\\*")), na.rm = TRUE)
       },
       .before = if (all(is.na(df_base$matchup_end_plus))) last_col() else last_col(2)
     ) |>
@@ -73,18 +91,28 @@ table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_ix) {
     left_join(df_grey_player, by = join_by(player_id))
 }
 
-table_sum_data_prep <- function(df_tbl, df_base, pin_ix) {
-  df_tbl |>
-    summarise(across(contains("/"), \(x) sum(as.numeric(x), na.rm = TRUE)), .by = competitor) |>
+table_sum_data_prep <- function(df_tbl, df_base, pin_date) {
+  df_sum <- df_tbl |>
+    summarise(
+      across(contains("/"), \(x) sum(as.numeric(str_remove(x, "\\*")), na.rm = TRUE)),
+      .by = competitor
+    ) |>
     arrange(desc(competitor)) |>
     rename(player_team = competitor) |>
-    mutate(player_name = NA, .after = player_team) |>
+    mutate(player_name = NA, .after = player_team)
+
+  # See table_data_prep(). df_tbl has already been filled, so its date columns
+  # carry through the summarise and no further filling is needed here.
+  col_dates <- col_dates_from_labels(names(df_sum), min(df_base$matchup_start, na.rm = TRUE))
+  remaining_cols <- names(col_dates)[col_dates >= pin_date]
+
+  df_sum |>
     rowwise() |>
     mutate(
       games_remaining = if (cur_date > unique(na.omit(df_base$matchup_end))) {
         0
       } else {
-        sum(as.numeric(str_remove(c_across((pin_ix + 2):last_col()), "\\*")), na.rm = TRUE)
+        sum(as.numeric(str_remove(c_across(all_of(remaining_cols)), "\\*")), na.rm = TRUE)
       },
       .before = if (all(is.na(df_base$matchup_end_plus))) last_col() else last_col(2)
     ) |>

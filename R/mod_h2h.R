@@ -379,26 +379,14 @@ mod_h2h_server <- function(
     })
 
     df_tbl <- reactive({
-      req(nrow(df_base()) > 0, df_grey_player(), pin_ix())
-      table_data_prep(df_base(), rv_carry_thru, df_grey_player(), pin_ix())
+      req(nrow(df_base()) > 0, df_grey_player(), input$pin_date)
+      table_data_prep(df_base(), rv_carry_thru, df_grey_player(), as.Date(input$pin_date))
     })
 
     df_tbl_sum <- reactive({
       req(df_tbl())
-      table_sum_data_prep(df_tbl(), df_base(), pin_ix())
+      table_sum_data_prep(df_tbl(), df_base(), as.Date(input$pin_date))
     })
-
-    pin_ix <- reactive({
-      req(nrow(df_base()) > 0)
-
-      df_base() |>
-        distinct(game_date) |>
-        na.omit() |>
-        pull(game_date) |>
-        sort() |>
-        detect_index(\(x) x == as.Date(input$pin_date))
-    }) |>
-      bindEvent(input$pin_date)
 
     # Plot -------------------------------------------------------------------
 
@@ -416,8 +404,13 @@ mod_h2h_server <- function(
     output$game_table <- renderReactable({
       req(df_tbl_sum(), df_tbl(), df_grey_player())
 
-      col_fmt <- game_tbl_col_fmt(df_tbl(), input$pin_date, unique(na.omit(df_base()$matchup_end)))
-      col_fmt_sum <- game_tbl_col_fmt(df_tbl_sum(), input$pin_date, unique(na.omit(df_base()$matchup_end)), "sum")
+      mup_end <- unique(na.omit(df_base()$matchup_end))
+      # Read off the table rather than df_base, which has no rows for the days
+      # that fill_missing_days() added.
+      col_dates <- col_dates_from_labels(names(df_tbl()), min(df_base()$matchup_start, na.rm = TRUE))
+
+      col_fmt <- game_tbl_col_fmt(df_tbl(), input$pin_date, mup_end, col_dates)
+      col_fmt_sum <- game_tbl_col_fmt(df_tbl_sum(), input$pin_date, mup_end, col_dates, type = "sum")
 
       reactable(
         df_tbl_sum(),
