@@ -1,9 +1,13 @@
-FROM nba.shiny_base
-COPY renv.lock renv.lock
-RUN R -e 'options(renv.config.pak.enabled = FALSE);renv::restore()'
-COPY nba.shiny_*.tar.gz /app.tar.gz
-RUN R -e 'remotes::install_local("/app.tar.gz",upgrade="never")'
-RUN rm /app.tar.gz
-EXPOSE 80
+FROM nba.shiny_base:latest
+
+# Copy app source
+COPY nba.shiny_*.tar.gz .
+RUN R -e 'remotes::install_local("nba.shiny_*.tar.gz", upgrade="never")' && rm nba.shiny_*.tar.gz
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+    CMD curl -f http://localhost:3838/ || exit 1
+
+EXPOSE 3838
 USER rstudio
-CMD R -e "options('shiny.port'=80,shiny.host='0.0.0.0');library(nba.shiny);nba.shiny::run_app()"
+CMD R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); nba.shiny::run_app()"
