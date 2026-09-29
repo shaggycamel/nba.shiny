@@ -10,16 +10,20 @@ dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id
       mutate(
         across(min:blk, \(x) round(scales::rescale(x), 2)),
         across(pf:td3, \(x) round(scales::rescale(x), 2)),
-        tov = round((((tov * -1) - min(tov, na.rm = TRUE)) / (max(tov, na.rm = TRUE) - min(tov, na.rm = TRUE))) + 1, 2),
+        # Invert the categories where a low value is the good outcome (eg turnovers)
+        across(
+          any_of(lower_is_better_cats),
+          \(x) round((((x * -1) - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))) + 1, 2)
+        ),
       ) |>
       calc_z_pcts() |>
       mutate(across(ends_with("_z"), \(x) round(scales::rescale(x), 2))) |>
       pivot_longer(
         cols = df_fty_cats |>
           filter(
-            (league_id == lg | is.na(league_id)),
-            ((h2h_cat & !str_like(nba_category, "%_pct")) |
-              str_like(nba_category, "%_z"))
+            league_id == lg,
+            (category_role == "scored" & !is_ratio) |
+              (category_role == "derived" & str_like(nba_category, "%_z"))
           ) |>
           pull(nba_category),
         names_to = "stat"
@@ -56,7 +60,7 @@ dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id
       relocate(team_id, .before = team) |>
       arrange(desc(min)) |>
       # to lighten the size of final object
-      select(-pf, -ends_with("_pct"), -matches("f[g|t][m|a]"))
+      select(-any_of("pf"), -ends_with("_pct"), -matches("f[g|t][m|a]"))
   })
 })
 

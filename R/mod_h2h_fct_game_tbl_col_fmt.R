@@ -6,9 +6,10 @@
 #'
 #' @noRd
 #'
-game_tbl_col_fmt <- function(df, dt, mup_end, type = "player") {
+game_tbl_col_fmt <- function(df, dt, mup_end, col_dates, type = "player") {
   col_fmt <- map(set_names(str_subset(colnames(df), "\\/")), \(x) {
     nm <- str_split_1(x, " ")
+    col_date <- col_dates[[x]]
     colDef(
       minWidth = 70,
       align = "center",
@@ -16,19 +17,15 @@ game_tbl_col_fmt <- function(df, dt, mup_end, type = "player") {
       style = function(value, index) {
         if (
           type == "player" &&
-            (parse_date_time(x, orders = "%a (%d/%m)") < coalesce(df$min_grey_date[index], as.Date("1000-01-01")) |
-              parse_date_time(x, orders = "%a (%d/%m)") > coalesce(df$max_grey_date[index], as.Date("3000-01-01")))
-          # tryCatch(
-          #   parse_date_time(x, orders = "%a (%d/%m)") > coalesce(df$grey_date[index], as.Date("2999-01-01")),
-          #   warning = \(w) FALSE
-          # )
+            (col_date < coalesce(df$min_grey_date[index], as.Date("1000-01-01")) |
+              col_date > coalesce(df$max_grey_date[index], as.Date("3000-01-01")))
         ) {
           list(background = "#d7d7d5", color = "#d7d7d5")
-        } else if (str_detect(value, "\\*") | value > 10) {
+        } else if (str_detect(as.character(value), "\\*") | as.numeric(str_remove(value, "\\*")) > 10) {
           list(background = "#ea7878ff")
-        } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") == dt, warning = \(w) FALSE)) {
+        } else if (col_date == dt) {
           list(background = "#f1e78e94")
-        } else if (tryCatch(parse_date_time(x, orders = "%a (%d/%m)") > mup_end, warning = \(w) FALSE)) {
+        } else if (col_date > mup_end) {
           list(background = "#eee5ff94")
         }
       }

@@ -7,7 +7,7 @@ dfs_league_overview <-
       mutate(
         across(
           any_of(df_fty_cats$nba_category),
-          \(x) if (cur_column() == "tov") percent_rank(-x) else percent_rank(x),
+          \(x) if (cur_column() %in% lower_is_better_cats) percent_rank(-x) else percent_rank(x),
           .names = "{.col}-perc_rank"
         ),
         .by = c(league_id, matchup)
@@ -22,8 +22,8 @@ dfs_league_overview <-
         names_sep = "-"
       ) |>
       inner_join(
-        select(df_fty_cats, league_id, nba_category) |>
-          filter(!str_detect(nba_category, "[g|t][m|a]")),
+        filter(df_fty_cats, category_role == "scored") |>
+          select(league_id, nba_category),
         by = join_by(league_id, category == nba_category)
       ) |>
       arrange(category) |>
@@ -47,7 +47,7 @@ dfs_league_overview <-
   mutate(
     across(
       any_of(df_fty_cats$nba_category),
-      \(x) if (cur_column() == "tov") rank(x) else rank(-x),
+      \(x) if (cur_column() %in% lower_is_better_cats) rank(x) else rank(-x),
       .names = "{.col}_rank"
     ),
     .by = c(league_id, matchup)
@@ -122,8 +122,12 @@ dfs_league_overview <-
   })() |>
   mutate(matchup_sigmoid = if_else(is.na(matchup_sigmoid), matchup, matchup_sigmoid)) |>
   (\(df) {
-    cols <- intersect(colnames(df), df_fty_cats$nba_category) |>
-      purrr::discard(\(x) str_detect(x, "[g|t][m|a]|all_cat")) # explicitly referenced on purpose
+    # Scored categories plus the derived z-scores; components and all_cat excluded
+    cols <- df_fty_cats |>
+      filter(category_role != "component", nba_category != "all_cat") |>
+      pull(nba_category) |>
+      unique() |>
+      intersect(colnames(df))
 
     bind_cols(
       df,
