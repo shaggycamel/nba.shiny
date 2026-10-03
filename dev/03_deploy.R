@@ -26,11 +26,18 @@ rhub::check_for_cran()
 devtools::build()
 
 ## Docker ----
-## If you want to deploy via a generic Dockerfile
-golem::add_dockerfile_with_renv(
-  lockfile = "renv.lock",
-  output_dir = "docker"
-)
+## NOTE: the commentary in this section is AI-generated.
+## docker/ is HAND-MAINTAINED and built from the repo root (context = repo
+## root). Do NOT re-run golem::add_dockerfile_with_renv() without re-applying
+## the customisations afterwards: it overwrites Dockerfile / Dockerfile_base,
+## re-creates docker/renv.lock (drift source) and rebuilds the tarball into
+## docker/. It also needs {dockerfiler}, which is not pinned in renv.lock.
+# golem::add_dockerfile_with_renv(
+#   lockfile = "renv.lock",
+#   output_dir = "docker",
+#   port = 3838,
+#   from = "ghcr.io/rocker-org/verse:4.5.2"
+# )
 
 ## If you want to deploy to ShinyProxy
 golem::add_dockerfile_with_renv_shinyproxy()
