@@ -1,8 +1,17 @@
 FROM nba.shiny_base:latest
 
-# Copy app source
-COPY nba.shiny_*.tar.gz .
-RUN R -e 'remotes::install_local("nba.shiny_*.tar.gz", upgrade="never")' && rm nba.shiny_*.tar.gz
+# Re-run restore against the same lockfile. The base layer already populated the
+# site library, so this is a cheap/cached safety check that keeps the app image
+# self-consistent if the lockfile changes without rebuilding the base.
+COPY renv.lock renv.lock
+RUN R -e 'options(renv.config.pak.enabled = FALSE); renv::restore()'
+
+# Install app source from the freshly built tarball
+COPY nba.shiny_*.tar.gz /app.tar.gz
+RUN R -e 'remotes::install_local("/app.tar.gz", upgrade = "never")' && rm /app.tar.gz
+
+# Use the production golem config (inst/golem-config.yml)
+ENV R_CONFIG_ACTIVE=production
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \

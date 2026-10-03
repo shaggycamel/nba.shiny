@@ -1,4 +1,30 @@
-docker build -f Dockerfile_base --progress=plain -t nba.shiny_base .
-docker build -f Dockerfile --progress=plain -t nba.shiny:latest .
-docker run -p 80:80 nba.shiny:latest
-# then go to 127.0.0.1:80
+# Run all commands from the repo root (build context = repo root).
+
+# 1. Build the base image. This is an EXTERNAL step: cron.sh does not build it,
+#    it only checks that nba.shiny_base:latest exists.
+docker build -f docker/Dockerfile_base --progress=plain -t nba.shiny_base:latest .
+
+# 2. Build the app tarball, then the app image.
+R CMD build .
+docker build -f docker/Dockerfile --progress=plain -t shaggycamel/nba.shiny:latest .
+
+# 3. Run it.
+docker run -p 3838:3838 shaggycamel/nba.shiny:latest
+# then go to 127.0.0.1:3838
+
+# ── Nuc notes ────────────────────────────────────────────────────────────────
+# All Docker work runs on the nuc, not the mac. Verify end-to-end there:
+
+docker run -d -p 3838:3838 --name nba_test shaggycamel/nba.shiny:latest
+docker ps                       # healthcheck should go healthy after start-period
+curl -f http://localhost:3838/  # expect HTTP 200
+docker logs nba_test
+docker rm -f nba_test
+
+# Then run cron.sh (single-image mode): it expects nba.shiny_base:latest to
+# already exist, builds/pushes shaggycamel/nba.shiny:latest and restarts the
+# shaggycamel/nba-shiny HF space.
+
+# Assumption to confirm on the nuc: the HuggingFace restart endpoint
+#   POST https://huggingface.co/api/spaces/<repo>/restart?factory=true
+# cron.sh fails loudly if it returns a non-2xx status.
