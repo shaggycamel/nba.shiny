@@ -1,22 +1,21 @@
-# Read only cockroach database connection\
-db_con <- function() {
+# Build a database connection from a credentials INI section
+db_connect <- function(section) {
+  file <- path.expand("~/.config/sports-hub-credentials.ini")
+  if (!file.exists(file)) {
+    stop("Credentials file not found: ", file, call. = FALSE)
+  }
+
+  creds <- ini::read.ini(file)[[section]]
+  if (is.null(creds)) {
+    stop("Section '", section, "' not found in ", file, call. = FALSE)
+  }
+
   dbConnect(
     drv = Postgres(),
-
-    # Local
-    user = "postgres",
-    password = "zxc123",
-    host = "localhost",
-    port = "5432",
-    dbname = "nba",
-    options = "-c search_path=nba"
-
-    # Cloud
-    # user = "kobe_public",
-    # password = "kobe123-69(.)(.)",
-    # host = "nba-data-mgmt-9184.8nj.gcp-europe-west1.cockroachlabs.cloud",
-    # port = "26257",
-    # dbname = "nba",
-    # options = "--cluster=nba-data-mgmt-9184"
+    user = creds$user,
+    password = creds$password,
+    host = creds$host,
+    port = creds$port,
+    dbname = creds$database
   )
 }

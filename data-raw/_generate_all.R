@@ -18,6 +18,10 @@ library(pracma)
 source(here("R", "utils_database.R"))
 source(here("R", "utils_calc_z_pcts.R"))
 
+# database connection
+db_con <- db_connect("postgres")
+# db_con <- db_connect("cockroach-read")
+
 # generate data files
 files <- list.files(here("data-raw"), pattern = "^[^_]")
 # files <- discard(files, \(x) str_detect(x, "h2h"))
@@ -37,3 +41,5 @@ walk(files, \(file) {
   cat(paste("\nExecuting:", file, "\n"))
   source(here("data-raw", file))
 })
+
+DBI::dbDisconnect(db_con)

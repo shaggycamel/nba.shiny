@@ -69,7 +69,7 @@ dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id
 
 min_inj_date <- as.Date(cur_date - days(30))
 df_ns_injuries <-
-  tbl(db_con(), I("nba.injuries")) |>
+  tbl(db_con, I("nba.injuries")) |>
   filter(game_date >= min_inj_date, status == "Out") |>
   as_tibble() |>
   mutate(

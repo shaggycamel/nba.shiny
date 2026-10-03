@@ -8,6 +8,7 @@
 #' @importFrom glue glue
 #' @importFrom golem activate_js add_resource_path bundle_resources favicon with_golem_options
 #' @importFrom htmltools tagList
+#' @importFrom ini read.ini
 #' @importFrom later later
 #' @importFrom lubridate NA_Date_
 #' @importFrom plotly config ggplotly layout plotlyOutput rangeslider renderPlotly style

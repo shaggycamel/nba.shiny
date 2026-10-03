@@ -1,7 +1,7 @@
 # Fty base ---------------------------------------------------------------
 
 df_fty_base <-
-  tbl(db_con(), I("fty_dev.base_vw")) |>
+  tbl(db_con, I("fty_dev.base_vw")) |>
   filter(season == cur_season) |>
   arrange(str_to_lower(league_name), str_to_lower(competitor_name)) |>
   as_tibble() |>
@@ -16,7 +16,7 @@ df_fty_base <-
 #               when the league does not score them
 #   derived   - all_cat/fg_z/ft_z, calculated here rather than stored
 df_fty_cats <-
-  tbl(db_con(), I("fty_dev.categories_vw")) |>
+  tbl(db_con, I("fty_dev.categories_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
@@ -29,7 +29,7 @@ lower_is_better_cats <- unique(pull(filter(df_fty_cats, !higher_is_better), nba_
 # Fty schedule -----------------------------------------------------------
 
 dfs_fty_schedule <-
-  tbl(db_con(), I("fty_dev.league_schedule_vw")) |>
+  tbl(db_con, I("fty_dev.league_schedule_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
   mutate(
@@ -53,7 +53,7 @@ dfs_fty_schedule <-
 # Fty roster -------------------------------------------------------------
 
 dfs_fty_roster <-
-  tbl(db_con(), I("fty_dev.roster_schedule_vw")) |>
+  tbl(db_con, I("fty_dev.roster_schedule_vw")) |>
   filter(season == cur_season) |>
   # filter(assigned_date < cur_date) |> # for testing purposes
   select(-c(competitor_name, opponent_name)) |>
@@ -71,7 +71,7 @@ dfs_fty_roster <-
 # Fantasy Box Scores -----------------------------------------------------
 
 df_fty_box_score <-
-  tbl(db_con(), I("fty_dev.matchup_box_score_vw")) |>
+  tbl(db_con, I("fty_dev.matchup_box_score_vw")) |>
   filter(season == cur_season) |>
   # filter(matchup <= 11) |> # for testing purposes
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
@@ -86,7 +86,7 @@ df_fty_box_score <-
 # Free Agents ------------------------------------------------------------
 
 dfs_fty_free_agents <-
-  tbl(db_con(), I("fty_dev.free_agents_vw")) |>
+  tbl(db_con, I("fty_dev.free_agents_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
@@ -97,7 +97,7 @@ dfs_fty_free_agents <-
 # Recent Avtivity --------------------------------------------------------
 
 dfs_fty_recent_activity <-
-  tbl(db_con(), I("fty_dev.recent_activity_vw")) |>
+  tbl(db_con, I("fty_dev.recent_activity_vw")) |>
   filter(season == cur_season) |>
   select(league_id, competitor_id, competitor_name, player, action, timestamp) |>
   as_tibble() |>
