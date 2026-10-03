@@ -111,6 +111,18 @@ test_that("days with no games get a column of their own", {
   expect_equal(tbl$games_remaining, 2)
 })
 
+test_that("the final matchup lays out no post-matchup days", {
+  # Week 19, the last before Post Fantasy, has no following matchup to look
+  # ahead to. With post_matchup_days = 0 the two trailing columns are dropped.
+  days <- cur_date + 0:1
+  df_base <- fake_h2h_base(roster, days, matchup_end = days[2])
+  default <- table_data_prep(df_base, NULL, no_grey_players(), days[1])
+  final <- table_data_prep(df_base, NULL, no_grey_players(), days[1], post_matchup_days = 0)
+
+  expect_equal(str_subset(names(default), "/"), format(cur_date + 0:3, "%a (%d/%m)"))
+  expect_equal(str_subset(names(final), "/"), format(days, "%a (%d/%m)"))
+})
+
 test_that("postseason roster uses the latest assignment snapshot for one competitor", {
   assignments <- tibble(
     competitor_id = c(1L, 1L, 1L, 2L),
