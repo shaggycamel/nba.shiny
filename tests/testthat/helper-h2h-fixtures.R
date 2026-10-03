@@ -8,6 +8,26 @@
 # compare it against matchup_end to decide whether a matchup is still running,
 # and cur_date is baked into the package data at build time.
 
+# Package data objects (LazyData) are not bindings in the namespace, so
+# testthat::local_mocked_bindings() cannot reach them. Functions read them from
+# the attached package environment, so swap them in there and restore on exit.
+local_pkg_data <- function(..., .env = parent.frame()) {
+  pkg <- as.environment("package:nba.shiny")
+  bindings <- list(...)
+  nms <- names(bindings)
+
+  missing <- nms[!rlang::env_has(pkg, nms)]
+  if (length(missing) > 0) {
+    cli::cli_abort("Can't find package data binding for {.field {missing}}.")
+  }
+
+  unlocked <- rlang::env_binding_unlock(pkg, nms)
+  rlang::env_bind(pkg, !!!bindings)
+
+  restore <- function() rlang::env_binding_lock(pkg, nms[unlocked])
+  withr::defer(restore(), envir = .env)
+}
+
 fake_player <- function(id, name, team, competitor, games, inj_status = NA_character_) {
   list(
     id = id,

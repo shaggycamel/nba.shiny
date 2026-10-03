@@ -61,14 +61,22 @@ mod_h2h_server <- function(
     observe({
       req(rv_carry_thru$fty_parameters_met)
 
+      matchup_periods <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
+        distinct(matchup, matchup_period) |>
+        arrange(matchup_period)
+
+      # keep the selected week across a switch, unless the new league is shorter
+      selected <- resolve_matchup_selection(
+        isolate(input$matchup),
+        matchup_periods$matchup_period,
+        rv_carry_thru$cur_matchup_period
+      )
+
       updateSelectizeInput(
         session,
         "matchup",
-        choices = pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
-          distinct(matchup, matchup_period) |>
-          arrange(matchup_period) |>
-          deframe(),
-        selected = rv_carry_thru$cur_matchup_period
+        choices = deframe(matchup_periods),
+        selected = selected
       )
 
       updateSelectInput(
@@ -362,13 +370,32 @@ mod_h2h_server <- function(
     }) |>
       bindEvent(input$matchup, rv_carry_thru$league_id, rv_carry_thru$competitor_id)
 
+    league_regular_periods <- reactive({
+      pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
+        filter(matchup_period != 99) |>
+        pull(matchup_period)
+    }) |>
+      bindEvent(rv_carry_thru$league_id, rv_carry_thru$fty_parameters_met)
+
     df_base <- reactive({
       req(opponent())
+      # previous league's week (or Post Fantasy) has no data here
+      req(as.integer(input$matchup) %in% league_regular_periods())
       base_data_prep(input, rv_carry_thru, opponent, rv_alter_team())
     }) |>
       bindEvent(opponent(), rv_alter_team(), ignoreInit = FALSE)
 
     df_plt <- reactive({
+      if (identical(as.character(input$matchup), "99")) {
+        df_postseason <- postseason_base_data_prep(
+          pluck(dfs_h2h_past, as.character(rv_carry_thru$league_id)),
+          rv_carry_thru$competitor_id,
+          rv_carry_thru$competitor_name
+        )
+        req(nrow(df_postseason) > 0)
+        return(plot_data_prep(df_postseason, rv_carry_thru))
+      }
+
       req(nrow(df_base()) > 0)
       plot_data_prep(df_base(), rv_carry_thru)
     })
@@ -378,9 +405,23 @@ mod_h2h_server <- function(
       grey_player_data_prep(input, df_base(), rv_carry_thru, opponent)
     })
 
+    # the last matchup has no following week to look ahead to
+    post_matchup_days <- reactive({
+      schedule <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id))
+      last_regular <- max(schedule$matchup_period[schedule$matchup_period != 99], na.rm = TRUE)
+      if (as.integer(input$matchup) == last_regular) 0L else 2L
+    }) |>
+      bindEvent(input$matchup, rv_carry_thru$league_id)
+
     df_tbl <- reactive({
       req(nrow(df_base()) > 0, df_grey_player(), input$pin_date)
-      table_data_prep(df_base(), rv_carry_thru, df_grey_player(), as.Date(input$pin_date))
+      table_data_prep(
+        df_base(),
+        rv_carry_thru,
+        df_grey_player(),
+        as.Date(input$pin_date),
+        post_matchup_days()
+      )
     })
 
     df_tbl_sum <- reactive({
@@ -402,9 +443,10 @@ mod_h2h_server <- function(
     # Game Table -------------------------------------------------------------
 
     output$game_table <- renderReactable({
-      if (identical(as.character(input$matchup), "99")) {
+      if (input$matchup == "99") {
         roster <- pluck(dfs_fty_roster, as.character(rv_carry_thru$league_id)) |>
           postseason_roster_data_prep(rv_carry_thru$competitor_id)
+
         req(nrow(roster) > 0)
 
         return(reactable(

@@ -49,7 +49,6 @@ col_dates_from_labels <- function(col_names, ref_date) {
 #'
 #' @noRd
 fill_missing_days <- function(df, matchup_start, matchup_end = NULL, fill = 0, post_matchup_days = 2) {
-  print(names(df))
   dts <- col_dates_from_labels(names(df), matchup_start)
   if (length(dts) == 0) {
     return(df)

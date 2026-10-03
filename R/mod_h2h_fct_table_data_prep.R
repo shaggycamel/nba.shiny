@@ -39,7 +39,7 @@ grey_player_data_prep <- function(input, df_base, rv_carry_thru, opponent) {
 }
 
 
-table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_date) {
+table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_date, post_matchup_days = 2) {
   df_wide <- df_base |>
     arrange(game_date) |>
     select(competitor, player_team, player_id, player_name, inj_status, fmt_date, scheduled_to_play) |>
@@ -68,7 +68,8 @@ table_data_prep <- function(df_base, rv_carry_thru, df_grey_player, pin_date) {
     df_wide,
     matchup_start,
     max(df_base$matchup_end, na.rm = TRUE),
-    fill = "0"
+    fill = "0",
+    post_matchup_days = post_matchup_days
   )
 
   # Select the pinned day onward by name. A pin_date outside the matchup - which

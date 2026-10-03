@@ -37,16 +37,28 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
       req(rv_carry_thru$fty_parameters_met)
 
       chs <- names(pluck(dfs_fty_nba_mup_weeks, as.character(rv_carry_thru$league_id)))
+      periods <- matchup_period_from_label(chs)
+
+      # same clamp as mod_h2h
+      fallback <- if (rv_carry_thru$cur_matchup_period == 99) 99L else as.integer(rv_carry_thru$cur_matchup_period)
+      selected_period <- resolve_matchup_selection(
+        matchup_period_from_label(isolate(input$matchup_selection)),
+        periods,
+        fallback
+      )
+
       updateSelectInput(
         session = session,
         inputId = "matchup_selection",
         choices = chs,
-        selected = if (rv_carry_thru$cur_matchup_period == 99) tail(chs, 1) else chs[rv_carry_thru$cur_matchup_period]
+        selected = chs[match(selected_period, periods)]
       )
 
       mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
         distinct(matchup_period, matchup_start, matchup_end) |>
-        filter(matchup_period == rv_carry_thru$cur_matchup_period)
+        filter(matchup_period == selected_period)
+
+      req(nrow(mup_min_max_dts) > 0)
 
       updateDateInput(
         session,
@@ -71,15 +83,10 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
       req(rv_carry_thru$fty_parameters_met)
 
       mup_min_max_dts <- pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
-        filter(
-          matchup_period ==
-            if (input$matchup_selection == "Post Fantasy") {
-              99
-            } else {
-              as.numeric(str_extract(input$matchup_selection, "^\\d+ "))
-            }
-        ) |>
+        filter(matchup_period == matchup_period_from_label(input$matchup_selection)) |>
         distinct(matchup_period, matchup_start, matchup_end)
+
+      req(nrow(mup_min_max_dts) > 0)
 
       updateDateInput(
         session,
@@ -136,26 +143,21 @@ mod_schedule_table_server <- function(id, rv_carry_thru, rv_copy_teams) {
       req(rv_carry_thru$fty_parameters_met, input$matchup_selection != "")
 
       pluck(dfs_fty_schedule, as.character(rv_carry_thru$league_id)) |>
-        filter(
-          matchup_period ==
-            if (input$matchup_selection == "Post Fantasy") {
-              99
-            } else {
-              as.numeric(str_extract(input$matchup_selection, "^\\d+ "))
-            }
-        ) |>
+        filter(matchup_period == matchup_period_from_label(input$matchup_selection)) |>
         distinct(matchup_period, matchup_start, matchup_end)
     }) |>
-      bindEvent(input$matchup_selection)
+      bindEvent(input$matchup_selection, rv_carry_thru$league_id, rv_carry_thru$fty_parameters_met)
 
     # The matchup week, with a column for every day rather than only the days
     # that have games - see fill_missing_days()
     df_week <- reactive({
       req(nrow(mup_dts()) > 0)
 
-      dfs_fty_nba_mup_weeks |>
-        pluck(as.character(rv_carry_thru$league_id), input$matchup_selection) |>
-        fill_missing_days(mup_dts()$matchup_start, mup_dts()$matchup_end)
+      # the old league's label can linger until the browser catches up
+      week <- pluck(dfs_fty_nba_mup_weeks, as.character(rv_carry_thru$league_id), input$matchup_selection)
+      req(!is.null(week))
+
+      fill_missing_days(week, mup_dts()$matchup_start, mup_dts()$matchup_end)
     })
 
     # Real date behind each column label - see col_dates_from_labels()

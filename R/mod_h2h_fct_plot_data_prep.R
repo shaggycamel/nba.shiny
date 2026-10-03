@@ -60,3 +60,22 @@ plot_data_prep <- function(df_base, rv_carry_thru) {
     ) |>
     arrange(competitor, name)
 }
+
+
+# Season totals for the postseason plot. The past data carries a two-day
+# lookahead per matchup, so cut at each matchup's own end to avoid double counting.
+postseason_base_data_prep <- function(df_h2h_past, selected_competitor_id, competitor_name) {
+  competitor_data <- df_h2h_past |>
+    map(\(matchup) pluck(matchup, as.character(selected_competitor_id))) |>
+    compact()
+
+  # nothing completed yet for this competitor
+  if (length(competitor_data) == 0) {
+    return(tibble())
+  }
+
+  competitor_data |>
+    list_rbind() |>
+    filter(game_date <= matchup_end) |>
+    mutate(competitor = competitor_name)
+}
