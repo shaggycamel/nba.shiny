@@ -66,6 +66,10 @@ dfs_h2h_future_generation <- function() {
         #   }
         # })() |>
         filter(cur_date <= matchup_end) |>
+        mutate(
+          matchup_end = if_else(matchup_period == 99, max(matchup_end[matchup_period != 99]), matchup_end),
+          .by = league_id
+        ) |>
         mutate(competitor_id = as.character(competitor_id)) |>
         select(league_id, platform, matchup_period, matchup_start, matchup_end, competitor_id, opponent_id),
       by = join_by(league_id, platform, competitor_id),
@@ -135,7 +139,8 @@ dfs_h2h_future_generation <- function() {
       relationship = "many-to-many"
     ) |>
     mutate(fmt_date = format(game_date, "%a (%d/%m)")) |>
-    distinct() # FOR SAFETY
+    distinct() |> # FOR SAFETY
+    filter(matchup_period != "99" | game_date == min(game_date), .by = c(league_id, competitor_id, player_id, matchup_period))
 
   # Add matchup lookahead
   # Not sure how this will look when cur_date == matchup_end
@@ -143,6 +148,7 @@ dfs_h2h_future_generation <- function() {
   df <- bind_rows(
     df,
     df |>
+      filter(matchup_period != "99") |>
       distinct(league_id, matchup_period, matchup_start, matchup_end) |>
       mutate(matchup_end_plus = matchup_end + ddays(2)) |>
       left_join(

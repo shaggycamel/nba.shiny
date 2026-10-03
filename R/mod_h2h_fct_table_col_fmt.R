@@ -49,6 +49,7 @@ col_dates_from_labels <- function(col_names, ref_date) {
 #'
 #' @noRd
 fill_missing_days <- function(df, matchup_start, matchup_end = NULL, fill = 0, post_matchup_days = 2) {
+  print(names(df))
   dts <- col_dates_from_labels(names(df), matchup_start)
   if (length(dts) == 0) {
     return(df)
@@ -93,4 +94,75 @@ pin_columns <- function(col_dates, pin_date, matchup_start, matchup_end, pin_dir
   } else {
     names(col_dates)[col_dates >= matchup_start & col_dates < pin_date]
   }
+}
+
+
+#' game_tbl_col_fmt
+#'
+#' @description A fct function
+#'
+#' @return The return value, if any, from executing the function.
+#'
+#' @noRd
+#'
+game_tbl_col_fmt <- function(df, dt, mup_end, col_dates, type = "player") {
+  col_fmt <- map(set_names(str_subset(colnames(df), "\\/")), \(x) {
+    nm <- str_split_1(x, " ")
+    col_date <- col_dates[[x]]
+    colDef(
+      minWidth = 70,
+      align = "center",
+      header = tags$span(nm[1], tags$br(), nm[2]),
+      style = function(value, index) {
+        if (
+          type == "player" &&
+            (col_date < coalesce(df$min_grey_date[index], as.Date("1000-01-01")) |
+              col_date > coalesce(df$max_grey_date[index], as.Date("3000-01-01")))
+        ) {
+          list(background = "#d7d7d5", color = "#d7d7d5")
+        } else if (str_detect(as.character(value), "\\*") | as.numeric(str_remove(value, "\\*")) > 10) {
+          list(background = "#ea7878ff")
+        } else if (col_date == dt) {
+          list(background = "#f1e78e94")
+        } else if (col_date > mup_end) {
+          list(background = "#eee5ff94")
+        }
+      }
+    )
+  })
+  col_fmt[["games_remaining"]] <- colDef(
+    minWidth = 70,
+    align = "center",
+    header = tags$span("Games", tags$br(), "Remaining"),
+    style = list(background = "#96e5cbeb")
+  )
+  col_fmt[["min_grey_date"]] <- colDef(show = FALSE)
+  col_fmt[["max_grey_date"]] <- colDef(show = FALSE)
+  col_fmt[["competitor"]] <- colDef(show = FALSE)
+  col_fmt[["player_id"]] <- colDef(show = FALSE)
+  col_fmt[["player_name"]] <- colDef(
+    show = ifelse(type == "sum", FALSE, TRUE),
+    name = "",
+    align = "left",
+    minWidth = 115,
+    sticky = "left",
+    style = list(
+      whiteSpace = "nowrap",
+      overflow = "hidden",
+      textOverflow = "ellipsis"
+    )
+  )
+  col_fmt[["player_team"]] <- colDef(
+    name = "",
+    # align = ifelse(type == "sum", "center", "left"),
+    minWidth = ifelse(type == "sum", 65 + 115, 65),
+    sticky = "left",
+    style = list(
+      whiteSpace = "nowrap",
+      overflow = "hidden",
+      textOverflow = "ellipsis"
+    )
+  )
+
+  col_fmt
 }
