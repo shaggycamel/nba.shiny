@@ -402,6 +402,29 @@ mod_h2h_server <- function(
     # Game Table -------------------------------------------------------------
 
     output$game_table <- renderReactable({
+      if (identical(as.character(input$matchup), "99")) {
+        roster <- pluck(dfs_fty_roster, as.character(rv_carry_thru$league_id)) |>
+          postseason_roster_data_prep(rv_carry_thru$competitor_id)
+        req(nrow(roster) > 0)
+
+        return(reactable(
+          roster,
+          pagination = FALSE,
+          bordered = TRUE,
+          style = list(border = "1px solid #000000"),
+          rowStyle = list(borderBottom = "1px solid #000000"),
+          theme = reactableTheme(headerStyle = list(borderBottom = "1px solid #000000")),
+          highlight = TRUE,
+          sortable = FALSE,
+          defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
+          columns = list(
+            player_id = colDef(show = FALSE),
+            player_team = colDef(name = "NBA Team", minWidth = 70, sticky = "left"),
+            player_name = colDef(name = "Player", minWidth = 115)
+          )
+        ))
+      }
+
       req(df_tbl_sum(), df_tbl(), df_grey_player())
 
       mup_end <- unique(na.omit(df_base()$matchup_end))
@@ -456,69 +479,69 @@ mod_h2h_server <- function(
 ## To be copied in the server
 # mod_h2h_server("h2h_1")
 
-library(shiny)
-library(bslib)
-library(shinyWidgets)
-library(shinyjs)
-library(reactable)
-library(r2d3)
-library(stringr)
-library(purrr)
-library(tibble)
-library(dplyr)
-library(tidyr)
-library(scales)
-library(lubridate)
-library(rlang)
-library(forcats)
+# library(shiny)
+# library(bslib)
+# library(shinyWidgets)
+# library(shinyjs)
+# library(reactable)
+# library(r2d3)
+# library(stringr)
+# library(purrr)
+# library(tibble)
+# library(dplyr)
+# library(tidyr)
+# library(scales)
+# library(lubridate)
+# library(rlang)
+# library(forcats)
 
-load("data/cur_date.rda")
-load("data/ls_fty_lookup.rda")
-load("data/ls_lo_lg_cats.rda")
-load("data/dfs_fty_schedule.rda")
-load("data/dfs_fty_roster.rda")
-load("data/dfs_h2h_past.rda")
-load("data/dfs_h2h_future.rda")
+# load("data/cur_date.rda")
+# load("data/ls_fty_lookup.rda")
+# load("data/ls_lo_lg_cats.rda")
+# load("data/dfs_fty_schedule.rda")
+# load("data/dfs_fty_roster.rda")
+# load("data/dfs_h2h_past.rda")
+# load("data/dfs_h2h_future.rda")
 
-source("R/app_config.R")
-source("R/mod_h2h_fct_base_data_prep.R")
-source("R/mod_h2h_fct_plot_data_prep.R")
-source("R/mod_h2h_fct_table_data_prep.R")
-source("R/mod_h2h_fct_table_col_fmt.R")
-source("R/utils_get_opponent.R")
-source("R/mod_modal_alter_team.R")
-source("R/mod_h2h_fct_base_data_prep.R")
+# source("R/app_config.R")
+# source("R/mod_h2h_fct_base_data_prep.R")
+# source("R/mod_h2h_fct_plot_data_prep.R")
+# source("R/mod_h2h_fct_table_data_prep.R")
+# source("R/mod_h2h_fct_table_col_fmt.R")
+# source("R/utils_get_opponent.R")
+# source("R/mod_modal_alter_team.R")
+# source("R/mod_h2h_fct_base_data_prep.R")
 
-ui <- page_fluid(
-  shinyjs::useShinyjs(),
-  mod_h2h_ui("h2h_1")
-)
+# ui <- page_fluid(
+#   shinyjs::useShinyjs(),
+#   mod_h2h_ui("h2h_1")
+# )
 
-server <- function(input, output, session) {
-  rv_carry_thru <- reactiveValues(
-    fty_parameters_met = TRUE,
-    platform = "ESPN",
-    league_id = 95537,
-    competitor_id = 26,
-    competitor_name = "Daisies",
-    cur_matchup_period = 99
-  )
-  rv_alter_team <- reactiveVal(list())
-  rv_alter_team_modal_vals <- reactiveValues()
-  rv_alter_team_trigger <- reactiveVal(0L)
-  rv_snapshot_log <- reactiveVal(list())
-  rv_snapshot_trigger <- reactiveVal(0L)
+# server <- function(input, output, session) {
+#   rv_carry_thru <- reactiveValues(
+#     fty_parameters_met = TRUE,
+#     platform = "ESPN",
+#     league_id = 95537,
+#     competitor_id = 26,
+#     competitor_name = "Daisies",
+#     cur_matchup_period = 99
+#   )
+#   rv_alter_team <- reactiveVal(list())
+#   rv_alter_team_modal_vals <- reactiveValues()
+#   rv_alter_team_trigger <- reactiveVal(0L)
+#   rv_snapshot_log <- reactiveVal(list())
+#   rv_snapshot_trigger <- reactiveVal(0L)
 
-  mod_h2h_server(
-    "h2h_1",
-    rv_carry_thru,
-    rv_alter_team,
-    rv_alter_team_modal_vals,
-    rv_alter_team_trigger,
-    rv_snapshot_log,
-    rv_snapshot_trigger
-  )
-  mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
-}
+#   mod_h2h_server(
+#     "h2h_1",
+#     rv_carry_thru,
+#     rv_alter_team,
+#     rv_alter_team_modal_vals,
+#     rv_alter_team_trigger,
+#     rv_snapshot_log,
+#     rv_snapshot_trigger
+#   )
+#   mod_modal_alter_team_server("modal_alter_team_1", rv_alter_team, rv_alter_team_modal_vals, rv_alter_team_trigger)
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)

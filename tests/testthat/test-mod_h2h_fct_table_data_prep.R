@@ -110,3 +110,19 @@ test_that("days with no games get a column of their own", {
   expect_equal(unname(unlist(select(tbl, contains("/")))), c("1", "0", "0", "1", "0", "0"))
   expect_equal(tbl$games_remaining, 2)
 })
+
+test_that("postseason roster uses the latest assignment snapshot for one competitor", {
+  assignments <- tibble(
+    competitor_id = c(1L, 1L, 1L, 2L),
+    assigned_date = as.Date(c("2026-03-01", "2026-03-08", "2026-03-08", "2026-03-15")),
+    player_id = c(10L, 10L, 11L, 20L),
+    player_name = c("Ann", "Ann", "Bob", "Cyd"),
+    player_team = c("LAL", "LAL", "BOS", "NYK")
+  )
+
+  roster <- postseason_roster_data_prep(assignments, 1L)
+
+  expect_named(roster, c("player_id", "player_name", "player_team"))
+  expect_equal(roster$player_name, c("Ann", "Bob"))
+  expect_equal(roster$player_team, c("LAL", "BOS"))
+})

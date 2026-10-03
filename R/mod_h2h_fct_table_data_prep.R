@@ -119,3 +119,15 @@ table_sum_data_prep <- function(df_tbl, df_base, pin_date) {
     ungroup() |>
     mutate(min_grey_date = NA_Date_, max_grey_date = NA_Date_)
 }
+
+
+# The end-of-season matchup has no game schedule. Show each competitor's roster
+# from its latest available assignment date instead of building date columns.
+postseason_roster_data_prep <- function(df_roster, selected_competitor_id) {
+  df_roster |>
+    ungroup() |>
+    filter(competitor_id == as.integer(selected_competitor_id)) |>
+    slice_max(assigned_date, n = 1, with_ties = TRUE) |>
+    distinct(player_id, player_name, player_team) |>
+    arrange(player_name)
+}
