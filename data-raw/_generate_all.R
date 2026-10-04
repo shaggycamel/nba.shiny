@@ -19,8 +19,8 @@ source(here("R", "utils_database.R"))
 source(here("R", "utils_calc_z_pcts.R"))
 
 # database connection
-db_con <- db_connect("postgres")
-# db_con <- db_connect("cockroach-read")
+# db_con <- db_connect("postgres")
+db_con <- db_connect("cockroach-read")
 
 # generate data files
 files <- list.files(here("data-raw"), pattern = "^[^_]")
