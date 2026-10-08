@@ -96,13 +96,16 @@ get_customer_name <- function(con, customer_id) {
 #'
 #' Reads `fty.customer_league`, joined to `fty.league` for names. Includes the
 #' customer's `competitor_id` when that column exists on `customer_league`
-#' (otherwise `NA`, and the manager must be chosen separately).
+#' (otherwise `NA`, and the manager must be chosen separately). Also surfaces
+#' `fty.league.slug` / `container_url` / `is_active` when those columns exist,
+#' so container URLs can be driven by the registry rather than the naming
+#' convention, and inactive leagues are skipped.
 #'
 #' @param con A `DBIConnection`.
 #' @param customer_id Customer id.
 #' @param season Season string.
 #' @return A data frame with `platform`, `league_id`, `league_name`,
-#'   `competitor_id`.
+#'   `competitor_id`, `slug`, `container_url`.
 #' @export
 get_customer_leagues <- function(con, customer_id, season = entry_season()) {
   cols <- DBI::dbGetQuery(
@@ -110,25 +113,37 @@ get_customer_leagues <- function(con, customer_id, season = entry_season()) {
     "select column_name from information_schema.columns
      where table_schema = 'fty' and table_name = 'customer_league'"
   )$column_name
-  has_competitor <- "competitor_id" %in% cols
-  competitor_col <- if (has_competitor) {
+  competitor_col <- if ("competitor_id" %in% cols) {
     "cl.competitor_id::text as competitor_id"
   } else {
     "null::text as competitor_id"
   }
 
+  league_cols <- DBI::dbGetQuery(
+    con,
+    "select column_name from information_schema.columns
+     where table_schema = 'fty' and table_name = 'league'"
+  )$column_name
+  slug_expr <- if ("slug" %in% league_cols) "lg.slug::text as slug" else "null::text as slug"
+  url_expr <- if ("container_url" %in% league_cols) "lg.container_url::text as container_url" else "null::text as container_url"
+  active_clause <- if ("is_active" %in% league_cols) "and coalesce(lg.is_active, true)" else ""
+
   DBI::dbGetQuery(
     con,
     sprintf(
-      "select cl.platform, cl.league_id::text as league_id, lg.league_name, %s
+      "select cl.platform, cl.league_id::text as league_id, lg.league_name,
+              %s, %s, %s
        from fty.customer_league cl
        left join fty.league lg
          on lg.season = cl.season and lg.platform = cl.platform and lg.league_id = cl.league_id
-       where cl.customer_id = %s and cl.season = %s
+       where cl.customer_id = %s and cl.season = %s %s
        order by lg.league_name",
       competitor_col,
+      slug_expr,
+      url_expr,
       DBI::dbQuoteString(con, customer_id),
-      DBI::dbQuoteString(con, season)
+      DBI::dbQuoteString(con, season),
+      active_clause
     )
   )
 }

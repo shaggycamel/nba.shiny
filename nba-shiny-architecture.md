@@ -32,8 +32,9 @@ Key principle: **one entry point** (auth + routing), **many shared league contai
 
 ## Entry Point Flow
 
-1. **Authenticate** — adapted `mod_modal_login` step 1: customer credentials checked
-   against Cockroach. If correct, establish the session.
+1. **Authenticate** — the entry point (`nba.shiny.entry`) checks email/password against
+   `fty.customer.password_hash` (PBKDF2-HMAC-SHA256, via `nba.shiny.core`). On success,
+   establish the session.
 2. **Select workspace** — step 2 modal lists only the customer's leagues (from
    `fty.customer_league`). The manager (`competitor_id`, `platform`) is derived from
    the mapping, not chosen separately. Auto-enter when the customer has a single league.
@@ -67,6 +68,11 @@ sig = HMAC(customer_id, platform, league_id, competitor_id, exp, secret)
   the same assignment logic as `mod_modal_login.R:30-48`, just fed from the URL.
 - `fty_parameters_met <- TRUE`, render immediately, skip the modal.
 - Invalid/expired/missing signature → refuse to render.
+- With `NBA_REQUIRE_HANDOFF=1`, a league container refuses to run without a valid
+  token (no standalone fallback modal); default `0` keeps the standalone picker for
+  local development.
+- `NBA_HANDOFF_SECRET` (the HMAC key) must be identical on the entry point and every
+  league container.
 
 Because `platform`, `league_id`, and `competitor_id` all originate from the server-side
 mapping, the token binds the customer to their own manager. The signature is
@@ -156,10 +162,15 @@ and keep that test.
 
 | Object | Key columns | Notes |
 |--------|-------------|-------|
-| `fty.customer` | `customer_id`, `slug`, `is_active` | existing |
-| `fty.customer_league` | `customer_id`, `platform`, `league_id`, `competitor_id` | PK `(customer_id, platform, league_id)`; one manager per league per customer |
-| `fty.league` | `platform`, `league_id`, `slug`, `container_url`, `is_active` | PK `(platform, league_id)`; `container_url` is a controlled domain, not a derived host |
+| `fty.customer` | `customer_id`, `name`, `email`, `password_hash` | `password_hash` is the encoded PBKDF2 string (NULL until set) |
+| `fty.customer_league` | `customer_id`, `season`, `platform`, `league_id`, `competitor_id` | PK `(customer_id, season, platform, league_id)`; one manager per league per customer |
+| `fty.league` | `platform`, `league_id`, `slug`, `container_url`, `is_active` | `slug`/`container_url`/`is_active` are optional; when absent the entry point and cron fall back to the naming convention |
 | `util.player_id_map_vw` | player-id bridge | formalise; asserted by tests |
+
+The entry point reads `competitor_id`, `slug`, `container_url` and `is_active`
+dynamically — it works with or without these columns, so the registry can be
+introduced incrementally. Set a customer's password with
+`scripts/set_customer_password.R` (git-ignored).
 
 ### Refresh
 

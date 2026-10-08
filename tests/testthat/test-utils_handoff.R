@@ -44,3 +44,18 @@ test_that("seed_handoff sets the carry-through and marks the handoff active", {
   expect_equal(shiny::isolate(rv$platform), "ESPN")
   expect_equal(shiny::isolate(rv$customer_id), "c")
 })
+
+test_that("the league parses exactly the query the entry point builds", {
+  with_handoff_secret({
+    # Mirrors nba.shiny.entry::league_iframe_url(): <space>/?<handoff_query>
+    url <- paste0(
+      "https://shaggycamel-nba-shiny-espn-95537.hf.space/?",
+      nba.shiny.core::handoff_query("cus_a24dgn8202vt", "ESPN", 95537, 25, ttl = 300)
+    )
+    h <- parse_handoff(sub("^[^?]*\\?", "", url))
+    expect_equal(
+      h,
+      list(platform = "ESPN", league_id = 95537L, competitor_id = 25L, customer_id = "cus_a24dgn8202vt")
+    )
+  })
+})

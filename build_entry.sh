@@ -25,6 +25,7 @@ TAG="${TAG:-latest}"
 ENTRY_SLUG="${ENTRY_SLUG:-entry}"
 DRY_RUN="${DRY_RUN:-0}"
 REBUILD_BASE="${REBUILD_BASE:-0}"
+PROVISION="${PROVISION:-0}"
 
 DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:-}"
 
@@ -58,6 +59,11 @@ if [ "$DRY_RUN" != "1" ]; then
   docker push "$FULL_IMAGE" || fail "docker push"
 else
   echo "[dry-run] docker build -f ./docker/Dockerfile_entry -t $FULL_IMAGE ."
+fi
+
+if [ "$PROVISION" = "1" ]; then
+  step "Provisioning entry point"
+  adapter_provision "$ENTRY_SLUG" "$FULL_IMAGE" "nba.shiny.entry" || fail "provision"
 fi
 
 step "Deploying entry point (${ENTRY_SLUG})"

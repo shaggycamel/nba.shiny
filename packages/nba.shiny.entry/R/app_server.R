@@ -38,18 +38,34 @@ app_server <- function(input, output, session) {
     get_customer_leagues(con, rv$customer_id, season)
   })
 
-  # The competitor id bound to the selected league for this customer, if the
-  # mapping provides one.
-  selected_league <- reactive({
+  selected_league_row <- reactive({
     req(input$league)
-    parse_league_value(input$league)
+    sel <- parse_league_value(input$league)
+    df <- leagues()
+    df[df$platform == sel$platform & as.integer(df$league_id) == sel$league_id, , drop = FALSE]
   })
 
+  # The manager bound to the selected league for this customer, when the mapping
+  # provides one.
   mapped_competitor <- reactive({
-    df <- leagues()
-    sel <- selected_league()
-    row <- df[df$platform == sel$platform & df$league_id == sel$league_id, , drop = FALSE]
-    if (nrow(row) == 1) row$competitor_id[[1]] else NA
+    row <- selected_league_row()
+    if (nrow(row) == 1L && !is.na(row$competitor_id[[1]]) && nzchar(row$competitor_id[[1]])) {
+      row$competitor_id[[1]]
+    } else {
+      NA_character_
+    }
+  })
+
+  # Prefer the registry container_url; fall back to the deploy naming convention.
+  league_container_url <- reactive({
+    row <- selected_league_row()
+    if (nrow(row) == 1L && !is.null(row$container_url) &&
+          !is.na(row$container_url[[1]]) && nzchar(row$container_url[[1]])) {
+      row$container_url[[1]]
+    } else {
+      sel <- parse_league_value(input$league)
+      league_space_url(sel$platform, sel$league_id)
+    }
   })
 
   output$app <- renderUI({
@@ -65,7 +81,7 @@ app_server <- function(input, output, session) {
       return(NULL)
     }
 
-    sel <- selected_league()
+    sel <- parse_league_value(input$league)
     comps <- get_league_competitors(con, sel$platform, sel$league_id, season)
     shiny::selectInput(
       "competitor",
@@ -76,12 +92,12 @@ app_server <- function(input, output, session) {
   })
 
   output$iframe <- renderUI({
-    sel <- selected_league()
+    sel <- parse_league_value(req(input$league))
     competitor_id <- if (!is.na(mapped_competitor())) mapped_competitor() else input$competitor
     req(competitor_id)
 
     url <- league_iframe_url(
-      league_space_url(sel$platform, sel$league_id),
+      league_container_url(),
       customer_id = rv$customer_id,
       platform = sel$platform,
       league_id = sel$league_id,

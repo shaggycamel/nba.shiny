@@ -82,6 +82,19 @@ mod_modal_login_server <- function(
         return()
       }
 
+      # Strict mode: no token means no dashboard.
+      if (isTRUE(rv_carry_thru$handoff_required)) {
+        showModal(
+          modalDialog(
+            tags$h4("Sign in required"),
+            "Open this dashboard from the NBA Shiny entry point.",
+            easyClose = FALSE,
+            footer = NULL
+          )
+        )
+        return()
+      }
+
       showModal(
         modalDialog(
           tags$head(tags$style(HTML(".selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}"))),

@@ -5,6 +5,7 @@
 # script must define the following functions:
 #
 #   adapter_url <slug>            -> print the container URL for a league
+#   adapter_provision <slug> <image> <app> -> create/configure the container (idempotent)
 #   adapter_deploy <slug> <image> -> ensure the provider runs <image> for <slug>
 #   adapter_teardown <slug>       -> stop/remove the league container
 #

@@ -30,6 +30,7 @@ EXCLUDE_LEAGUES="${EXCLUDE_LEAGUES:-}"
 DRY_RUN="${DRY_RUN:-0}"
 REBUILD_BASE="${REBUILD_BASE:-0}"
 BUILD_ENTRY="${BUILD_ENTRY:-0}"
+PROVISION="${PROVISION:-0}"
 
 DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:-}"
 HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
@@ -84,6 +85,11 @@ process_league() {
     docker push "$image" || fail "docker push"
   fi
 
+  if [ "$PROVISION" = "1" ]; then
+    step "Provisioning ${slug}"
+    adapter_provision "$slug" "$image" "nba.shiny" || fail "provision"
+  fi
+
   step "Deploying ${slug}"
   adapter_deploy "$slug" "$image" || fail "deploy"
 
@@ -107,8 +113,19 @@ if [ "$DRY_RUN" != "1" ]; then
 fi
 
 step "Fetching active leagues for season ${SEASON}"
+# Use fty.league.slug / is_active when the registry columns exist; otherwise
+# fall back to deriving the slug from platform + league_id.
+LEAGUE_COLS="$(psql "$DATABASE_URL" -t -A -c \
+  "select column_name from information_schema.columns
+   where table_schema = 'fty' and table_name = 'league'" 2>/dev/null | tr '\n' ',')"
+SLUG_EXPR="null::text"
+ACTIVE_CLAUSE=""
+case ",${LEAGUE_COLS}," in *,slug,*) SLUG_EXPR="slug::text" ;; esac
+case ",${LEAGUE_COLS}," in *,is_active,*) ACTIVE_CLAUSE="and coalesce(is_active, true)" ;; esac
+
 LEAGUES="$(psql "$DATABASE_URL" -t -A -F',' -c \
-  "SELECT DISTINCT platform, league_id FROM fty.league WHERE season = '${SEASON}' ORDER BY league_id;" 2>/dev/null)"
+  "SELECT platform, league_id, ${SLUG_EXPR} AS slug
+   FROM fty.league WHERE season = '${SEASON}' ${ACTIVE_CLAUSE} ORDER BY league_id;" 2>/dev/null)"
 
 if [ -z "$LEAGUES" ]; then
   printf "⚠ No leagues found for season %s\n" "$SEASON"
@@ -117,7 +134,7 @@ fi
 
 FAILED=()
 
-while IFS=',' read -r PLATFORM LEAGUE_ID; do
+while IFS=',' read -r PLATFORM LEAGUE_ID LEAGUE_SLUG; do
   [ -z "$PLATFORM" ] && continue
 
   case " ${EXCLUDE_LEAGUES} " in
@@ -127,7 +144,11 @@ while IFS=',' read -r PLATFORM LEAGUE_ID; do
       ;;
   esac
 
-  SLUG="$(printf '%s-%s' "$PLATFORM" "$LEAGUE_ID" | tr '[:upper:]' '[:lower:]')"
+  if [ -n "${LEAGUE_SLUG:-}" ]; then
+    SLUG="$(printf '%s' "$LEAGUE_SLUG" | tr '[:upper:]' '[:lower:]')"
+  else
+    SLUG="$(printf '%s-%s' "$PLATFORM" "$LEAGUE_ID" | tr '[:upper:]' '[:lower:]')"
+  fi
   step "Processing league: ${SLUG} (${PLATFORM} ${LEAGUE_ID})"
 
   if ( process_league "$PLATFORM" "$LEAGUE_ID" "$SLUG" ); then

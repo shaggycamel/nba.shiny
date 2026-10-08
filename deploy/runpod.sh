@@ -15,6 +15,11 @@ adapter_url() {
   echo "https://${1}.<runpod-custom-domain>"
 }
 
+adapter_provision() {
+  echo "runpod adapter: provision for ${1} not implemented (create the pod + proxy externally)" >&2
+  return 1
+}
+
 adapter_deploy() {
   local slug="$1"
   local image="$2"

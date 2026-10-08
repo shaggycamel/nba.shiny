@@ -16,6 +16,9 @@ app_server <- function(input, output, session) {
   rv_copy_teams <- reactiveVal(NULL)
   rv_switch_league_trigger <- reactiveVal(0L)
 
+  # In production, refuse to run without a valid entry-point handoff token.
+  rv_carry_thru$handoff_required <- Sys.getenv("NBA_REQUIRE_HANDOFF", "0") == "1"
+
   # ------- Handoff from the entry point (embedded mode)
   # url_search arrives with clientData, so read it reactively.
   observe({
