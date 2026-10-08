@@ -6,9 +6,10 @@ FROM nba.shiny_base:latest
 COPY renv.lock renv.lock
 RUN R -e 'options(renv.config.pak.enabled = FALSE); renv::restore()'
 
-# Install app source from the freshly built tarball
-COPY nba.shiny_*.tar.gz /app.tar.gz
-RUN R -e 'remotes::install_local("/app.tar.gz", upgrade = "never")' && rm /app.tar.gz
+# Install app source from the freshly built tarball. Dependencies (including
+# nba.shiny.core) are already present in the base image, so don't resolve them.
+COPY nba.shiny.league/nba.shiny.league_*.tar.gz /app.tar.gz
+RUN R -e 'remotes::install_local("/app.tar.gz", upgrade = "never", dependencies = FALSE)' && rm /app.tar.gz
 
 # Use the production golem config (inst/golem-config.yml)
 ENV R_CONFIG_ACTIVE=production
@@ -19,4 +20,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
 
 EXPOSE 3838
 USER rstudio
-CMD R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); nba.shiny::run_app()"
+CMD R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); library(nba.shiny.league); nba.shiny.league::run_app()"

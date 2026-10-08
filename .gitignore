@@ -10,3 +10,13 @@
 docker/renv.lock
 docker/*.tar.gz
 *.tar.gz
+
+# Local admin scripts (not versioned)
+scripts/
+
+# E2E test artifacts
+e2e/node_modules/
+e2e/shots/
+
+# Deploy host secrets (tokens, DB URL) — never commit
+.profile

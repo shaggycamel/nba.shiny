@@ -1,51 +1,47 @@
-
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 # `{nba.shiny}`
 
 <!-- badges: start -->
-
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-## Installation
+An NBA fantasy dashboard built with Shiny and [{golem}](https://thinkr-open.github.io/golem/),
+deployed to multiple customers through a single authenticated entry point and
+shared, league-scoped containers. This repository is a small monorepo of three R
+packages plus the container/deploy pipeline.
 
-You can install the development version of `{nba.shiny}` like so:
+## Repository layout
 
-``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+- `nba.shiny.league/` — the **league dashboard** package (the Shiny app).
+- `nba.shiny.entry/` — the **entry point**: auth → league picker → signed iframe.
+- `nba.shiny.core/` — shared theme, database access, password hashing and
+  handoff tokens.
+- `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
+  pipeline (`cron.sh` is the single deploy entry point).
+- `e2e/` — browser end-to-end test (entry login → signed iframe → league).
+- `docs/` — deployment runbook.
+
+## Run locally
+
+```r
+renv::restore()
+devtools::load_all("nba.shiny.league")
+nba.shiny.league::run_app()
 ```
 
-## Run
+## Deploy
 
-You can launch the application by running:
+Builds and deploys run from the repo root. See
+[docs/NUC_DEPLOY.md](docs/NUC_DEPLOY.md) for the full runbook.
 
-``` r
-nba.shiny::run_app()
+## Tests
+
+```r
+devtools::test("nba.shiny.league")
+devtools::test("nba.shiny.core")
+devtools::test("nba.shiny.entry")
 ```
 
-## About
-
-You are reading the doc about version : 0.0.0.9000
-
-This README has been compiled on the
-
-``` r
-Sys.time()
-#> [1] "2025-12-28 11:21:28 NZDT"
-```
-
-Here are the tests results and package coverage:
-
-``` r
-devtools::check(quiet = TRUE)
-#> ══ Documenting ═════════════════════════════════════════════════════════════════
-#> ℹ Installed roxygen2 version (7.3.2) doesn't match required (7.1.1)
-#> ✖ `check()` will not re-document this package
-#> Error: Could not find tools necessary to compile a package
-#> Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
-```
-
-``` r
-covr::package_coverage()
-#> Error in loadNamespace(x): there is no package called 'covr'
-```
+Browser end-to-end (entry login → signed iframe → league dashboard) lives in
+[`e2e/`](e2e/README.md).

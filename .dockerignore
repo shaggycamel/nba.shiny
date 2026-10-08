@@ -4,16 +4,23 @@
 .Rproj.user
 .DS_Store
 
-# Data sources (the built tarball already carries data/)
-data/
-data-raw/
+# Data sources (the league tarball already carries data/)
+nba.shiny.*/data/
+nba.shiny.*/data-raw/
 
-# Dev / tests / docs not needed to build or run the app
-dev/
-tests/
-man/
+# Dev / tests / docs / host-only tooling not needed to build or run the images
+nba.shiny.*/dev/
+nba.shiny.*/tests/
+nba.shiny.*/man/
+docs/
+deploy/
+e2e/
 
-# Generated docker artifacts (must not shadow the root tarball)
+# Host secrets and local admin scripts — never sent to the daemon
+.profile
+scripts/
+
+# Generated docker artifacts (must not shadow the league tarball)
 docker/*.tar.gz
 docker/renv.lock
 

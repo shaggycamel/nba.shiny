@@ -5,11 +5,11 @@ output: github_document
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 ```{r, include = FALSE}
-  knitr::opts_chunk$set(
-    collapse = TRUE,
-    comment = "#>",
-    fig.path = "man/figures/README-",
-    out.width = "100%"
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
 )
 ```
 
@@ -19,42 +19,42 @@ output: github_document
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-## Installation
+An NBA fantasy dashboard built with Shiny and [{golem}](https://thinkr-open.github.io/golem/),
+deployed to multiple customers through a single authenticated entry point and
+shared, league-scoped containers. This repository is a small monorepo of three R
+packages plus the container/deploy pipeline.
 
-You can install the development version of `{nba.shiny}` like so:
+## Repository layout
 
-```{r}
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
-```
+- `nba.shiny.league/` — the **league dashboard** package (the Shiny app).
+- `nba.shiny.entry/` — the **entry point**: auth → league picker → signed iframe.
+- `nba.shiny.core/` — shared theme, database access, password hashing and
+  handoff tokens.
+- `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
+  pipeline (`cron.sh` is the single deploy entry point).
+- `e2e/` — browser end-to-end test (entry login → signed iframe → league).
+- `docs/` — deployment runbook.
 
-## Run
-
-You can launch the application by running:
+## Run locally
 
 ```{r, eval = FALSE}
-nba.shiny::run_app()
+renv::restore()
+devtools::load_all("nba.shiny.league")
+nba.shiny.league::run_app()
 ```
 
-## About
+## Deploy
 
-You are reading the doc about version : `r golem::pkg_version()`
+Builds and deploys run from the repo root. See
+[docs/NUC_DEPLOY.md](docs/NUC_DEPLOY.md) for the full runbook.
 
-This README has been compiled on the
+## Tests
 
-```{r}
-Sys.time()
+```{r, eval = FALSE}
+devtools::test("nba.shiny.league")
+devtools::test("nba.shiny.core")
+devtools::test("nba.shiny.entry")
 ```
 
-Here are the tests results and package coverage:
-
-```{r, error = TRUE}
-devtools::check(quiet = TRUE)
-```
-
-```{r echo = FALSE}
-unloadNamespace("nba.shiny")
-```
-
-```{r, error = TRUE}
-covr::package_coverage()
-```
+Browser end-to-end (entry login → signed iframe → league dashboard) lives in
+[`e2e/`](e2e/README.md).

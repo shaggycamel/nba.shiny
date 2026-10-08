@@ -1,16 +1,25 @@
 # Run all commands from the repo root (build context = repo root).
 
-# 1. Build the base image. This is an EXTERNAL step: cron.sh does not build it,
-#    it only checks that nba.shiny_base:latest exists.
+# 1. Build the base image. cron.sh builds this automatically when it is missing;
+#    do it by hand only for debugging.
 docker build -f docker/Dockerfile_base --progress=plain -t nba.shiny_base:latest .
 
-# 2. Build the app tarball, then the app image.
-R CMD build .
+# 2. Build the app tarball (from inside the league package), then the app image.
+( cd nba.shiny.league && R CMD build . )
 docker build -f docker/Dockerfile --progress=plain -t shaggycamel/nba.shiny:latest .
 
 # 3. Run it.
 docker run -p 3838:3838 shaggycamel/nba.shiny:latest
 # then go to 127.0.0.1:3838
+
+# 4. Build and run the entry point image (nba.shiny.core comes from the base).
+docker build -f docker/Dockerfile_entry --progress=plain -t shaggycamel/nba.shiny.entry:latest .
+docker run -p 3839:3838 shaggycamel/nba.shiny.entry:latest
+# then go to 127.0.0.1:3839
+# Entry runtime config: NBA_DB_SECTION, NBA_HANDOFF_SECRET, NBA_SEASON,
+# NBA_HF_OWNER. Passwords live in fty.customer.password_hash (set one with
+# scripts/set_customer_password.R). For local dev only: NBA_ENTRY_DEV=1 with
+# NBA_ENTRY_DEV_PASSWORD.
 
 # ── Nuc notes ────────────────────────────────────────────────────────────────
 # All Docker work runs on the nuc, not the mac. Verify end-to-end there:
@@ -21,10 +30,16 @@ curl -f http://localhost:3838/  # expect HTTP 200
 docker logs nba_test
 docker rm -f nba_test
 
-# Then run cron.sh (single-image mode): it expects nba.shiny_base:latest to
-# already exist, builds/pushes shaggycamel/nba.shiny:latest and restarts the
-# shaggycamel/nba-shiny HF space.
+# Then run cron.sh: it builds/reuses nba.shiny_base:latest, then builds/pushes
+# one league image per active league and restarts each league's HF space.
 
 # Assumption to confirm on the nuc: the HuggingFace restart endpoint
 #   POST https://huggingface.co/api/spaces/<repo>/restart?factory=true
 # cron.sh fails loudly if it returns a non-2xx status.
+
+# ── Do not regenerate these files ────────────────────────────────────────────
+# docker/ is HAND-MAINTAINED and built from the repo root (context = repo root).
+# Do NOT re-run golem::add_dockerfile_with_renv() without re-applying the
+# customisations afterwards: it overwrites Dockerfile / Dockerfile_base,
+# re-creates docker/renv.lock (a drift source) and rebuilds the tarball into
+# docker/. It also needs {dockerfiler}, which is not pinned in renv.lock.
