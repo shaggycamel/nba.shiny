@@ -57,6 +57,37 @@ build_base() {
   fi
 }
 
+# ── Run R inside the base image (host needs only Docker, not R/renv) ──────────
+
+R_IMAGE="${R_IMAGE:-$BASE_IMAGE}"
+R_CREDS_DIR="${R_CREDS_DIR:-$HOME/.config}"
+
+run_r() {
+  docker run --rm \
+    -e HOME=/root \
+    -e RENV_CONFIG_AUTOLOADER_ENABLED=FALSE \
+    -e NBA_DB_SECTION="${NBA_DB_SECTION:-cockroach-read}" \
+    -e NBA_SEASON="$SEASON" \
+    -e LEAGUE_ID="${LEAGUE_ID:-}" \
+    -v "${REPO_DIR}:/work" \
+    -v "${R_CREDS_DIR}:/root/.config:ro" \
+    -w /work \
+    "$R_IMAGE" "$@"
+}
+
+list_leagues() {
+  if ! docker image inspect "$R_IMAGE" >/dev/null 2>&1; then
+    if [ "$DRY_RUN" = "1" ]; then
+      printf "⚠ base image %s not built; dry-run uses a placeholder league\n" "$R_IMAGE" >&2
+      printf 'ESPN,95537,\n'
+      return 0
+    fi
+    printf "✘ base image %s not found — build it first (build_all.sh or REBUILD_BASE=1)\n" "$R_IMAGE" >&2
+    return 1
+  fi
+  run_r Rscript ./data-raw/_list_leagues.R 2>/dev/null
+}
+
 # ── Per-league build/deploy ───────────────────────────────────────────────────
 
 process_league() {
@@ -68,10 +99,10 @@ process_league() {
   if [ "$DRY_RUN" != "1" ]; then
     step "Generating data for ${slug} (LEAGUE_ID=${league_id})"
     rm -f ./data/*.rda ./*.tar.gz || fail "cleaning build artifacts"
-    NBA_SEASON="$SEASON" LEAGUE_ID="$league_id" Rscript ./data-raw/_generate_league.R || fail "data generation"
+    LEAGUE_ID="$league_id" run_r Rscript ./data-raw/_generate_league.R || fail "data generation"
 
     step "Building R package tarball"
-    R CMD build . || fail "package build"
+    run_r R CMD build . || fail "package build"
 
     step "Building image: ${image}"
     docker build -f ./docker/Dockerfile -t "$image" . || fail "docker build"
@@ -102,15 +133,15 @@ build_base || exit 1
 if [ "$DRY_RUN" != "1" ]; then
   : "${DOCKERHUB_TOKEN:?DOCKERHUB_TOKEN not set}"
 
-  step "Generating shared NBA base"
-  NBA_SEASON="$SEASON" Rscript ./data-raw/_generate_base.R || exit 1
+  step "Generating shared NBA base (in ${R_IMAGE})"
+  run_r Rscript ./data-raw/_generate_base.R || exit 1
 
   step "Logging in to Docker Hub"
   echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin || exit 1
 fi
 
 step "Fetching active leagues for season ${SEASON}"
-LEAGUES="$(NBA_SEASON="$SEASON" Rscript ./data-raw/_list_leagues.R 2>/dev/null)"
+LEAGUES="$(list_leagues)"
 
 if [ -z "$LEAGUES" ]; then
   printf "⚠ No leagues found for season %s\n" "$SEASON"

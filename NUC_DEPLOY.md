@@ -21,10 +21,13 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 ## 2. Prerequisites (verify before starting)
 
 - Docker is running and can reach Docker Hub.
-- `R` (>= 4.1) is installed; generation and league listing use `data-raw/`.
+- **No host R/renv is needed.** All R steps (data generation, `R CMD build`, league
+  listing) run inside the `nba.shiny_base:latest` image, which carries the restored
+  library. (The host must have Docker; R is used via `docker run`.)
 - Credentials INI exists: `~/.config/sports-hub-credentials.ini` with a
   `cockroach-read` section (and `postgres` for local). Generation defaults to
-  `NBA_DB_SECTION=cockroach-read`. (No `psql` needed — leagues are listed via R.)
+  `NBA_DB_SECTION=cockroach-read`. (No `psql` needed — leagues are listed via R in
+  the base image.)
 - A `./.profile` on the nuc exports the tokens (the scripts source it
   automatically when run non-interactively; for a manual run, source it first):
   - `DOCKERHUB_TOKEN` — Docker Hub push token (required).
@@ -53,7 +56,8 @@ set -a; source ./.profile; set +a
 for v in DOCKERHUB_TOKEN HUGGINGFACE_TOKEN; do
   [ -n "${!v:-}" ] && echo "$v set" || echo "$v MISSING"
 done
-NBA_SEASON="${NBA_SEASON:-2025-26}" Rscript ./data-raw/_list_leagues.R   # lists leagues
+# League listing runs inside the base image, so do it after the base is built
+# (or just rely on the dry run in §5, which exercises the same code path).
 ```
 
 ## 3. Code must be pushed first
@@ -193,8 +197,8 @@ dashboard should load inside the iframe, already scoped to that customer's manag
   `openssl`, `digest`, `ini`, `bslib`, `DBI`, `RPostgres`. Rebuild with
   `REBUILD_BASE=1`.
 - **"no leagues found"**: `fty.league` has no rows for `NBA_SEASON`, or the
-  credentials INI section is wrong. Debug with
-  `NBA_SEASON=2025-26 Rscript data-raw/_list_leagues.R`.
+  credentials INI section is wrong. Debug inside the base image:
+  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work nba.shiny_base:latest Rscript ./data-raw/_list_leagues.R`
 - **HF restart returns non-2xx**: the Space does not exist (run with `PROVISION=1`)
   or `HUGGINGFACE_TOKEN` lacks write access.
 - **401/blank league dashboard**: `NBA_HANDOFF_SECRET` differs between entry and the
