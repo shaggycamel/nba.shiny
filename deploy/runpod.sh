@@ -3,7 +3,7 @@
 # Future provider. RunPod proxy URLs are pod-id based and change on recreate,
 # so this adapter must publish a stable container_url (custom domain / reverse
 # proxy) into the league registry rather than deriving it. See the
-# "Provider Portability" section of nba-shiny-architecture.md.
+# "Provider Portability" section of docs/nba-shiny-architecture.md.
 #
 # NOT FUNCTIONAL YET: adapter_deploy fails closed so a mis-set DEPLOY_PROVIDER
 # cannot silently no-op in production.

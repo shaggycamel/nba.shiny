@@ -1,51 +1,41 @@
-
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 # `{nba.shiny}`
 
 <!-- badges: start -->
-
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-## Installation
+An NBA fantasy dashboard built with Shiny and [{golem}](https://thinkr-open.github.io/golem/).
+It is deployed to multiple customers through a single authenticated entry point
+and shared, league-scoped containers.
 
-You can install the development version of `{nba.shiny}` like so:
+## Repository layout
 
-``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
-```
+- `R/`, `inst/`, `data-raw/` — the **league dashboard** package (`nba.shiny`).
+- `packages/nba.shiny.core/` — shared theme, database access, password hashing
+  and handoff tokens.
+- `packages/nba.shiny.entry/` — the **entry point**: auth → league picker →
+  signed iframe.
+- `docker/`, `deploy/`, `cron.sh`, `build_*.sh` — container build and deploy
+  pipeline.
+- `docs/` — architecture and deployment runbook.
 
-## Run
+## Run locally
 
-You can launch the application by running:
-
-``` r
+```r
+renv::restore()
 nba.shiny::run_app()
 ```
 
-## About
+## Deploy
 
-You are reading the doc about version : 0.0.0.9000
+Builds and deploys run from the repo root. See
+[docs/NUC_DEPLOY.md](docs/NUC_DEPLOY.md) for the full runbook and
+[docs/nba-shiny-architecture.md](docs/nba-shiny-architecture.md) for the design.
 
-This README has been compiled on the
+## Tests
 
-``` r
-Sys.time()
-#> [1] "2025-12-28 11:21:28 NZDT"
-```
-
-Here are the tests results and package coverage:
-
-``` r
-devtools::check(quiet = TRUE)
-#> ══ Documenting ═════════════════════════════════════════════════════════════════
-#> ℹ Installed roxygen2 version (7.3.2) doesn't match required (7.1.1)
-#> ✖ `check()` will not re-document this package
-#> Error: Could not find tools necessary to compile a package
-#> Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
-```
-
-``` r
-covr::package_coverage()
-#> Error in loadNamespace(x): there is no package called 'covr'
+```r
+devtools::test()
 ```

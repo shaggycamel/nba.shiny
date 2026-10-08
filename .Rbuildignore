@@ -3,10 +3,8 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^data-raw$
-dev_history.R
 ^dev$
-$run_dev.*
-^.here$
+^\.here$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^CODE_OF_CONDUCT\.md$
@@ -18,5 +16,4 @@ $run_dev.*
 ^cron\.sh$
 ^build_entry\.sh$
 ^build_all\.sh$
-^nba-shiny-architecture\.md$
-^NUC_DEPLOY\.md$
+^docs$

@@ -37,3 +37,10 @@ docker rm -f nba_test
 # Assumption to confirm on the nuc: the HuggingFace restart endpoint
 #   POST https://huggingface.co/api/spaces/<repo>/restart?factory=true
 # cron.sh fails loudly if it returns a non-2xx status.
+
+# ── Do not regenerate these files ────────────────────────────────────────────
+# docker/ is HAND-MAINTAINED and built from the repo root (context = repo root).
+# Do NOT re-run golem::add_dockerfile_with_renv() without re-applying the
+# customisations afterwards: it overwrites Dockerfile / Dockerfile_base,
+# re-creates docker/renv.lock (a drift source) and rebuilds the tarball into
+# docker/. It also needs {dockerfiler}, which is not pinned in renv.lock.
