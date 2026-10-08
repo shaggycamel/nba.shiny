@@ -16,8 +16,9 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 - Containers are built from Docker images and deployed as **one HF Space per league**
   plus a single **entry Space**. League containers bake their data at build time;
   the entry point reads customer/league data from CockroachDB at runtime.
-- Deploy logic lives in `cron.sh` (leagues), `build_entry.sh` (entry),
-  `build_all.sh` (both), and `deploy/` (provider adapter; currently Hugging Face).
+- Deploy logic lives in `cron.sh` (the single deploy entry point: base image +
+  leagues, plus the entry point when `BUILD_ENTRY=1`), `build_entry.sh` (entry
+  only), and `deploy/` (provider adapter; currently Hugging Face).
 
 ## 2. Prerequisites (verify before starting)
 
@@ -98,25 +99,29 @@ Run from the repo root. Source the tokens first, and always dry-run first.
 set -a; source ./.profile; set +a
 
 # 5.0 Dry run (no docker, no push, no deploy)
-DRY_RUN=1 PROVISION=1 bash build_all.sh
+DRY_RUN=1 PROVISION=1 bash cron.sh
 
 # 5.1 Real run. PROVISION=1 creates any missing HF Spaces.
-PROVISION=1 bash build_all.sh
+PROVISION=1 bash cron.sh
+
+# 5.2 Full run including the entry point (this restarts the entry Space).
+PROVISION=1 BUILD_ENTRY=1 bash cron.sh
 ```
 
-`build_all.sh` does, in order:
+`cron.sh` does, in order:
 1. Base image `nba.shiny_base:latest` (slow; skipped if it exists unless `REBUILD_BASE=1`)
    and verifies `nba.shiny.core` loads in it.
-2. `cron.sh` — generates the shared NBA base once, then per league generates data,
-   builds the tarball, builds/pushes `shaggycamel/nba.shiny-<slug>:latest`, and
-   deploys. Failures are reported per league; the loop continues.
-3. `build_entry.sh` — builds/pushes/deploys `shaggycamel/nba.shiny.entry:latest`.
+2. Generates the shared NBA base once, then per league generates data, builds the
+   tarball, builds/pushes `shaggycamel/nba.shiny-<slug>:latest`, and deploys.
+   Failures are reported per league; the loop continues.
+3. `build_entry.sh` — builds/pushes/deploys `shaggycamel/nba.shiny.entry:latest` —
+   only when `BUILD_ENTRY=1` (rebuilding restarts the entry Space).
 
 Individual stages (if you need to isolate a failure):
 
 ```bash
-REBUILD_BASE=1 bash build_all.sh            # force base rebuild
-SKIP_ENTRY=1 bash build_all.sh              # leagues only
+REBUILD_BASE=1 bash cron.sh                 # force base rebuild
+BUILD_ENTRY=1 bash cron.sh                  # also rebuild/deploy the entry point
 PROVISION=1 bash build_entry.sh             # entry only
 ```
 

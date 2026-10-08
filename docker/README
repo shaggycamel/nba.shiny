@@ -1,7 +1,7 @@
 # Run all commands from the repo root (build context = repo root).
 
-# 1. Build the base image. This is an EXTERNAL step: cron.sh does not build it,
-#    it only checks that nba.shiny_base:latest exists.
+# 1. Build the base image. cron.sh builds this automatically when it is missing;
+#    do it by hand only for debugging.
 docker build -f docker/Dockerfile_base --progress=plain -t nba.shiny_base:latest .
 
 # 2. Build the app tarball (from inside the league package), then the app image.
@@ -30,9 +30,8 @@ curl -f http://localhost:3838/  # expect HTTP 200
 docker logs nba_test
 docker rm -f nba_test
 
-# Then run cron.sh (single-image mode): it expects nba.shiny_base:latest to
-# already exist, builds/pushes shaggycamel/nba.shiny:latest and restarts the
-# shaggycamel/nba-shiny HF space.
+# Then run cron.sh: it builds/reuses nba.shiny_base:latest, then builds/pushes
+# one league image per active league and restarts each league's HF space.
 
 # Assumption to confirm on the nuc: the HuggingFace restart endpoint
 #   POST https://huggingface.co/api/spaces/<repo>/restart?factory=true

@@ -17,8 +17,8 @@ packages plus the container/deploy pipeline.
 - `nba.shiny.entry/` — the **entry point**: auth → league picker → signed iframe.
 - `nba.shiny.core/` — shared theme, database access, password hashing and
   handoff tokens.
-- `docker/`, `deploy/`, `cron.sh`, `build_*.sh` — container build and deploy
-  pipeline.
+- `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
+  pipeline (`cron.sh` is the single deploy entry point).
 - `docs/` — architecture and deployment runbook.
 
 ## Run locally

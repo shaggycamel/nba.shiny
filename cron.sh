@@ -2,10 +2,13 @@
 
 # Remember to chmod +x cron.sh on nuc after pulling latest file
 #
-# League-scoped data refresh + deploy. Generates the shared NBA base once, then
-# generates/builds/deploys one container per league via the deploy adapter (see
-# deploy/adapter.sh). Data is customer-agnostic; the entry point maps customers
-# to leagues at runtime.
+# Single deploy entry point: build the base image, generate the shared NBA base,
+# then generate/build/deploy one container per league via the deploy adapter
+# (see deploy/adapter.sh). Data is customer-agnostic; the entry point maps
+# customers to leagues at runtime.
+#
+# Run this directly (cronjobs run `cron.sh`). The entry-point container is
+# deployed only when BUILD_ENTRY=1, since rebuilding it restarts the entry Space.
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +58,10 @@ build_base() {
   else
     step "Reusing base image ${BASE_IMAGE} (set REBUILD_BASE=1 to rebuild)"
   fi
+
+  step "Verifying nba.shiny.core in ${BASE_IMAGE}"
+  docker run --rm "$BASE_IMAGE" R -e 'library(nba.shiny.core); cat("nba.shiny.core ok\n")' >/dev/null \
+    || fail "nba.shiny.core missing from ${BASE_IMAGE}"
 }
 
 # ── Run R inside the base image (host needs only Docker, not R/renv) ──────────
@@ -83,7 +90,7 @@ list_leagues() {
       printf 'ESPN,95537,\n'
       return 0
     fi
-    printf "✘ base image %s not found — build it first (build_all.sh or REBUILD_BASE=1)\n" "$R_IMAGE" >&2
+    printf "✘ base image %s not found — build it first (cron.sh or REBUILD_BASE=1)\n" "$R_IMAGE" >&2
     return 1
   fi
   run_r Rscript ./data-raw/_list_leagues.R 2>/dev/null
