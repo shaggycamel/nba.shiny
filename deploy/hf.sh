@@ -15,7 +15,8 @@ adapter_url() {
   echo "https://${HF_OWNER}-nba-shiny-${1}.hf.space"
 }
 
-# Create and configure the Space if it does not already exist. Idempotent.
+# Create and configure the Space if needed. Idempotent: creates a missing Space,
+# and writes the Dockerfile when the Space has none (existing empty Spaces).
 adapter_provision() {
   local slug="$1"
   local image="$2"
@@ -35,16 +36,23 @@ adapter_provision() {
     -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
     "https://huggingface.co/api/spaces/${repo}")"
 
-  if [ "$status" = "200" ]; then
-    echo "[hf] ${repo} already exists"
-    return 0
+  if [ "$status" != "200" ]; then
+    echo "[hf] creating ${repo}"
+    curl -sf -X POST "https://huggingface.co/api/repos/create" \
+      -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"type\":\"space\",\"name\":\"${name}\",\"private\":false,\"sdk\":\"docker\"}" >/dev/null || return 1
   fi
 
-  echo "[hf] creating ${repo}"
-  curl -sf -X POST "https://huggingface.co/api/repos/create" \
+  # Existing Spaces may be empty; ensure a Dockerfile is present.
+  local df_status
+  df_status="$(curl -s -o /dev/null -w '%{http_code}' \
     -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"type\":\"space\",\"name\":\"${name}\",\"private\":false,\"sdk\":\"docker\"}" >/dev/null || return 1
+    "https://huggingface.co/api/spaces/${repo}/raw/main/Dockerfile")"
+  if [ "$df_status" = "200" ]; then
+    echo "[hf] ${repo} already configured"
+    return 0
+  fi
 
   # Dockerfile runs our prebuilt image on the Hugging Face port.
   local df_json="FROM ${image}\\nEXPOSE 7860\\nUSER rstudio\\nCMD [\\\"R\\\", \\\"-e\\\", \\\"options('shiny.port'=7860, 'shiny.host'='0.0.0.0'); ${app}::run_app()\\\"]"
@@ -57,7 +65,7 @@ adapter_provision() {
       -H "Content-Type: application/x-ndjson" \
       --data-binary @- >/dev/null || return 1
 
-  echo "[hf] provisioned ${repo}"
+  echo "[hf] configured ${repo} (FROM ${image})"
 }
 
 adapter_deploy() {
