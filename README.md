@@ -19,7 +19,7 @@ packages plus the container/deploy pipeline.
   handoff tokens.
 - `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
   pipeline (`cron.sh` is the single deploy entry point).
-- `docs/` — architecture and deployment runbook.
+- `docs/` — deployment runbook.
 
 ## Run locally
 
@@ -32,8 +32,7 @@ nba.shiny.league::run_app()
 ## Deploy
 
 Builds and deploys run from the repo root. See
-[docs/NUC_DEPLOY.md](docs/NUC_DEPLOY.md) for the full runbook and
-[docs/nba-shiny-architecture.md](docs/nba-shiny-architecture.md) for the design.
+[docs/NUC_DEPLOY.md](docs/NUC_DEPLOY.md) for the full runbook.
 
 ## Tests
 
