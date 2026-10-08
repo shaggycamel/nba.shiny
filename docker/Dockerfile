@@ -20,4 +20,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
 
 EXPOSE 3838
 USER rstudio
-CMD R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); nba.shiny::run_app()"
+CMD R -e "options(shiny.port=3838, shiny.host='0.0.0.0'); library(nba.shiny); nba.shiny::run_app()"

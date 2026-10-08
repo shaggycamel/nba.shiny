@@ -44,18 +44,19 @@ adapter_provision() {
       -d "{\"type\":\"space\",\"name\":\"${name}\",\"private\":false,\"sdk\":\"docker\"}" >/dev/null || return 1
   fi
 
-  # Existing Spaces may be empty; ensure a Dockerfile is present.
-  local df_status
-  df_status="$(curl -s -o /dev/null -w '%{http_code}' \
-    -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
+  # Existing Spaces may be empty or missing the library() call that attaches
+  # LazyData. Rewrite the Dockerfile unless it already loads the package.
+  local df_body
+  df_body="$(curl -s -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
     "https://huggingface.co/api/spaces/${repo}/raw/main/Dockerfile")"
-  if [ "$df_status" = "200" ]; then
+  if printf '%s' "$df_body" | grep -q "library("; then
     echo "[hf] ${repo} already configured"
     return 0
   fi
 
-  # Dockerfile runs our prebuilt image on the Hugging Face port.
-  local df_json="FROM ${image}\\nEXPOSE 7860\\nUSER rstudio\\nCMD [\\\"R\\\", \\\"-e\\\", \\\"options('shiny.port'=7860, 'shiny.host'='0.0.0.0'); ${app}::run_app()\\\"]"
+  # Dockerfile runs our prebuilt image on the Hugging Face port. library() is
+  # required so LazyData objects (e.g. ls_nba_teams) are attached.
+  local df_json="FROM ${image}\\nEXPOSE 7860\\nUSER rstudio\\nCMD [\\\"R\\\", \\\"-e\\\", \\\"options('shiny.port'=7860, 'shiny.host'='0.0.0.0'); library(${app}); ${app}::run_app()\\\"]"
 
   printf '%s\n' \
     '{"key":"header","value":{"summary":"provision space"}}' \
