@@ -99,7 +99,9 @@ process_league() {
 
   if [ "$DRY_RUN" != "1" ]; then
     step "Generating data for ${slug} (LEAGUE_ID=${league_id})"
-    rm -f "./${PKG_DIR}/data"/*.rda "./${PKG_DIR}"/*.tar.gz || fail "cleaning build artifacts"
+    # Clean inside the container: run_r executes as root and owns the generated
+    # .rda/.tar.gz files, so the host user cannot remove them directly.
+    run_r sh -c 'rm -f ./data/*.rda ./*.tar.gz' || fail "cleaning build artifacts"
     LEAGUE_ID="$league_id" run_r Rscript ./data-raw/_generate_league.R || fail "data generation"
 
     step "Building R package tarball"
