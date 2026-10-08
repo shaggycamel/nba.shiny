@@ -16,6 +16,7 @@ Imports:
     DBI,
     htmltools,
     nba.shiny.core,
+    RPostgres,
     shiny
 Suggests:
     testthat (>= 3.0.0)

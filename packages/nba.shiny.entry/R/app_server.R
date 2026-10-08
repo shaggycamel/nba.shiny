@@ -3,7 +3,7 @@
 #' @param input,output,session Internal {shiny} parameters.
 #' @noRd
 app_server <- function(input, output, session) {
-  con <- nba.shiny.core::db_connect()
+  con <- entry_db_connect()
   session$onSessionEnded(function() {
     try(DBI::dbDisconnect(con), silent = TRUE)
   })

@@ -2,6 +2,7 @@
 export(run_app)
 export(check_credentials)
 export(dev_login)
+export(entry_db_connect)
 export(entry_season)
 export(get_customer_name)
 export(get_customer_leagues)

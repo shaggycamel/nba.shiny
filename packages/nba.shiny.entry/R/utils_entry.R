@@ -6,6 +6,29 @@ entry_season <- function() {
   Sys.getenv("NBA_SEASON", "2025-26")
 }
 
+#' Open the entry point's database connection
+#'
+#' Prefers individual `NBA_DB_*` environment variables (for hosted runtimes such
+#' as Hugging Face Spaces, where no credentials file exists), falling back to
+#' `nba.shiny.core::db_connect()` (INI-based) for local development.
+#'
+#' @return A `DBIConnection`.
+#' @export
+entry_db_connect <- function() {
+  if (nzchar(Sys.getenv("NBA_DB_HOST"))) {
+    return(DBI::dbConnect(
+      RPostgres::Postgres(),
+      host = Sys.getenv("NBA_DB_HOST"),
+      port = Sys.getenv("NBA_DB_PORT", "26257"),
+      user = Sys.getenv("NBA_DB_USER"),
+      password = Sys.getenv("NBA_DB_PASSWORD"),
+      dbname = Sys.getenv("NBA_DB_NAME", "nba"),
+      sslmode = Sys.getenv("NBA_DB_SSLMODE", "require")
+    ))
+  }
+  nba.shiny.core::db_connect()
+}
+
 #' Verify a customer's credentials against the database
 #'
 #' Looks the customer up by email and checks the password against
