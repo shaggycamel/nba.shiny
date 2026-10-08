@@ -65,49 +65,6 @@ dfs_player_comparison <- map(set_names(as.character(unique(df_fty_base$league_id
 })
 
 
-# Nested injuries --------------------------------------------------------
-
-min_inj_date <- as.Date(cur_date - days(30))
-df_ns_injuries <-
-  tbl(db_con, I("nba.injuries")) |>
-  filter(game_date >= min_inj_date, status == "Out") |>
-  as_tibble() |>
-  mutate(
-    across(ends_with("_id"), \(x) as.integer(x)),
-    opponent = str_remove(matchup, "@"),
-    opponent = str_remove(opponent, team_slug),
-    opponent = str_squish(opponent)
-  ) |>
-  left_join(
-    df_nba_roster |>
-      select(nba_id = player_id, salary) |>
-      distinct(),
-    by = join_by(nba_id)
-  ) |>
-  select(team = team_slug, opponent, game_date, player_name, salary) |>
-  arrange(desc(game_date), desc(salary)) |>
-  summarise(player_names = paste(player_name, collapse = ", "), .by = c(team, opponent, game_date))
-
-ls_injuries <-
-  map(set_names(names(dfs_rolling_stats)), \(x) {
-    df_ns_injuries |>
-      filter(game_date >= max(game_date) - days(x)) |>
-      nest_by(team, .keep = TRUE) |>
-      deframe()
-  })
-
-
-# Nested game log --------------------------------------------------------
-
-ls_player_game_log <-
-  df_nba_player_box_score |>
-  filter(between(game_date, max(game_date) - ddays(30), max(game_date) - ddays(1))) |>
-  select(player_id, game_date, opponent, any_of(cats)) |>
-  arrange(desc(game_date)) |>
-  nest_by(player_id) |>
-  deframe()
-
-
 # Write data -------------------------------------------------------------
 
-usethis::use_data(dfs_player_comparison, ls_injuries, ls_player_game_log, overwrite = TRUE)
+usethis::use_data(dfs_player_comparison, overwrite = TRUE)

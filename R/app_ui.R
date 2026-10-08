@@ -25,11 +25,7 @@ app_ui <- function(request) {
         icon = icon("right-from-bracket"),
         width = "150px"
       )),
-      theme = bs_theme(
-        version = 5,
-        preset = "litera",
-        primary = "#133DEF"
-      )
+      theme = nba.shiny.core::nba_theme()
     )
   )
 }

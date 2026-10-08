@@ -11,6 +11,7 @@
 #' @importFrom ini read.ini
 #' @importFrom later later
 #' @importFrom lubridate NA_Date_
+#' @importFrom nba.shiny.core nba_theme verify_handoff_token
 #' @importFrom plotly config ggplotly layout plotlyOutput rangeslider renderPlotly style
 #' @importFrom r2d3 r2d3 renderD3 d3Output
 #' @importFrom purrr compact discard discard_at keep list_rbind map map_chr map_int pluck

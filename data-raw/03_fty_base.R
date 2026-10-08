@@ -1,10 +1,27 @@
+# League selection -------------------------------------------------------
+# Fantasy data is league-scoped and customer-agnostic. When LEAGUE_ID is set
+# (comma-separated ids) only those leagues are generated, for a per-league
+# container build; otherwise every league with data for the season is used.
+
+df_fty_base_all <-
+  tbl(db_con, I("fty.base_vw")) |>
+  filter(season == cur_season) |>
+  as_tibble()
+
+target_leagues <- Sys.getenv("LEAGUE_ID", unset = "")
+target_leagues <- if (nzchar(target_leagues)) {
+  as.integer(strsplit(target_leagues, ",")[[1]])
+} else {
+  unique(df_fty_base_all$league_id)
+}
+
+
 # Fty base ---------------------------------------------------------------
 
 df_fty_base <-
-  tbl(db_con, I("fty.base_vw")) |>
-  filter(season == cur_season) |>
+  df_fty_base_all |>
+  filter(league_id %in% target_leagues) |>
   arrange(str_to_lower(league_name), str_to_lower(competitor_name)) |>
-  as_tibble() |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
 
 
@@ -19,6 +36,7 @@ df_fty_cats <-
   tbl(db_con, I("fty.categories_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
+  filter(league_id %in% target_leagues) |>
   mutate(across(ends_with("_id"), \(x) as.integer(x)))
 
 # Categories a league plays, and those where a low value is the good outcome
@@ -32,6 +50,7 @@ dfs_fty_schedule <-
   tbl(db_con, I("fty.league_schedule_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
+  filter(league_id %in% target_leagues) |>
   mutate(
     across(matches("_id$|_period$"), \(x) as.integer(x)),
     matchup = str_c(matchup_period, " (", matchup_start, ")")
@@ -58,6 +77,7 @@ dfs_fty_roster <-
   # filter(assigned_date < cur_date) |> # for testing purposes
   select(-c(competitor_name, opponent_name)) |>
   as_tibble() |>
+  filter(league_id %in% target_leagues) |>
   mutate(across(matches("_id$|_period$"), \(x) as.integer(x))) |>
   mutate(dow = wday(assigned_date, week_start = 1), .after = assigned_date) |>
   left_join(
@@ -77,6 +97,7 @@ df_fty_box_score <-
   select(-season, -platform, -matches("r_name|r_abbrev")) |>
   relocate(starts_with("competitor"), .before = matchup) |>
   as_tibble() |>
+  filter(league_id %in% target_leagues) |>
   group_by(league_id, matchup) |>
   calc_z_pcts() |>
   ungroup() |>
@@ -89,6 +110,7 @@ dfs_fty_free_agents <-
   tbl(db_con, I("fty.free_agents_vw")) |>
   filter(season == cur_season) |>
   as_tibble() |>
+  filter(league_id %in% target_leagues) |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
   nest_by(league_id) |>
   deframe()
@@ -101,6 +123,7 @@ dfs_fty_recent_activity <-
   filter(season == cur_season) |>
   select(league_id, competitor_id, competitor_name, player, action, timestamp) |>
   as_tibble() |>
+  filter(league_id %in% target_leagues) |>
   mutate(across(ends_with("_id"), \(x) as.integer(x))) |>
   arrange(desc(timestamp)) |>
   nest_by(league_id) |>

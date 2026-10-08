@@ -11,3 +11,7 @@ $run_dev.*
 ^README\.Rmd$
 ^CODE_OF_CONDUCT\.md$
 ^docker$
+^deploy$
+^packages$
+^scripts$
+^nba-shiny-architecture\.md$

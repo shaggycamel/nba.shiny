@@ -1,132 +1,157 @@
 #!/bin/bash
 
 # Remember to chmod +x cron.sh on nuc after pulling latest file
+#
+# League-scoped data refresh + deploy. Generates the shared NBA base once, then
+# generates/builds/deploys one container per league via the deploy adapter (see
+# deploy/adapter.sh). Data is customer-agnostic; the entry point maps customers
+# to leagues at runtime.
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 # If executing from cron source .profile (containing tokens)
-if [ ! -t 1 ]; then
-    source ./.profile
+if [ ! -t 1 ] && [ -f ./.profile ]; then
+  # shellcheck source=/dev/null
+  source ./.profile
 fi
 
-set -euo pipefail
+set -uo pipefail
 
 # Work from the repo root regardless of the invoking cwd
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
+cd "$REPO_DIR" || exit 1
 
-# Variables
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
 IMAGE_NAME="nba.shiny"
+BASE_IMAGE="nba.shiny_base:latest"
 TAG="${TAG:-latest}"
+SEASON="${NBA_SEASON:-2025-26}"
+EXCLUDE_LEAGUES="${EXCLUDE_LEAGUES:-}"
+DRY_RUN="${DRY_RUN:-0}"
+REBUILD_BASE="${REBUILD_BASE:-0}"
+BUILD_ENTRY="${BUILD_ENTRY:-0}"
 
-# Single-image mode (short term): one image, one HuggingFace space.
-SINGLE_CUSTOMER_ID="${SINGLE_CUSTOMER_ID:-cus_a24dgn8202vt}"
-HF_SPACE="${HF_SPACE:-shaggycamel/nba-shiny}"
+DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:-}"
+HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
+DATABASE_URL="${DATABASE_URL:-}"
 
-DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:?DOCKERHUB_TOKEN not set}"
-HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:?HUGGINGFACE_TOKEN not set}"
+# shellcheck source=/dev/null
+source "${REPO_DIR}/deploy/adapter.sh"
 
-# Custom function for messages
 step() { printf "\n▶ %s\n\n" "$*"; }
+fail() { printf "  ✘ %s\n" "$*" >&2; return 1; }
 
-# ── Log in to Docker Hub (once) ─────────────────────────────────────────────
-step "Logging in to Docker Hub..."
-echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
+# ── Base image (deps only, rebuilt rarely) ────────────────────────────────────
 
-# ── Base image check (built externally, cron does not build it) ─────────────
-step "Checking base image..."
-if ! docker image inspect nba.shiny_base:latest >/dev/null 2>&1; then
-    printf "✘ nba.shiny_base:latest not found — build it before running cron\n" >&2
-    exit 1
+build_base() {
+  if [ "$DRY_RUN" = "1" ]; then
+    step "[dry-run] ensure base image ${BASE_IMAGE} exists"
+    return 0
+  fi
+
+  if [ "$REBUILD_BASE" = "1" ] || ! docker image inspect "$BASE_IMAGE" >/dev/null 2>&1; then
+    step "Building base image ${BASE_IMAGE}"
+    docker build -f ./docker/Dockerfile_base --progress=plain -t "$BASE_IMAGE" . || fail "base image build failed"
+  else
+    step "Reusing base image ${BASE_IMAGE} (set REBUILD_BASE=1 to rebuild)"
+  fi
+}
+
+# ── Per-league build/deploy ───────────────────────────────────────────────────
+
+process_league() {
+  local platform="$1"
+  local league_id="$2"
+  local slug="$3"
+  local image="${DOCKERHUB_USER}/${IMAGE_NAME}-${slug}:${TAG}"
+
+  if [ "$DRY_RUN" != "1" ]; then
+    step "Generating data for ${slug} (LEAGUE_ID=${league_id})"
+    rm -f ./data/*.rda ./*.tar.gz || fail "cleaning build artifacts"
+    NBA_SEASON="$SEASON" LEAGUE_ID="$league_id" Rscript ./data-raw/_generate_league.R || fail "data generation"
+
+    step "Building R package tarball"
+    R CMD build . || fail "package build"
+
+    step "Building image: ${image}"
+    docker build -f ./docker/Dockerfile -t "$image" . || fail "docker build"
+  else
+    step "[dry-run] generate + build image ${image}"
+  fi
+
+  step "Pushing ${image}"
+  if [ "$DRY_RUN" != "1" ]; then
+    docker push "$image" || fail "docker push"
+  fi
+
+  step "Deploying ${slug}"
+  adapter_deploy "$slug" "$image" || fail "deploy"
+
+  printf "  → %s\n" "$(adapter_url "$slug")"
+}
+
+# ── Run ───────────────────────────────────────────────────────────────────────
+
+: "${DATABASE_URL:?DATABASE_URL is required}"
+
+build_base || exit 1
+
+if [ "$DRY_RUN" != "1" ]; then
+  : "${DOCKERHUB_TOKEN:?DOCKERHUB_TOKEN not set}"
+
+  step "Generating shared NBA base"
+  NBA_SEASON="$SEASON" Rscript ./data-raw/_generate_base.R || exit 1
+
+  step "Logging in to Docker Hub"
+  echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin || exit 1
 fi
 
-# ── Single-image build/deploy ────────────────────────────────────────────────
-FULL_IMAGE="$DOCKERHUB_USER/$IMAGE_NAME:$TAG"
+step "Fetching active leagues for season ${SEASON}"
+LEAGUES="$(psql "$DATABASE_URL" -t -A -F',' -c \
+  "SELECT DISTINCT platform, league_id FROM fty.league WHERE season = '${SEASON}' ORDER BY league_id;" 2>/dev/null)"
 
-step "Cleaning previous build artifacts..."
-rm -f ./data-raw/*.rda ./*.tar.gz docker/*.tar.gz
-
-step "Regenerating data for $SINGLE_CUSTOMER_ID..."
-CUSTOMER_ID="$SINGLE_CUSTOMER_ID" Rscript ./data-raw/_generate_all.R
-
-step "Building R package tarball..."
-R CMD build .
-
-step "Building Docker image: $FULL_IMAGE..."
-docker build -f ./docker/Dockerfile -t "$FULL_IMAGE" .
-
-step "Pushing $FULL_IMAGE to Docker Hub..."
-docker push "$FULL_IMAGE"
-
-step "Triggering HuggingFace rebuild for $HF_SPACE..."
-HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
-  "https://huggingface.co/api/spaces/$HF_SPACE/restart?factory=true" \
-  -H "Authorization: Bearer $HUGGINGFACE_TOKEN")
-if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-    printf "✘ HuggingFace restart failed for %s (HTTP %s)\n" "$HF_SPACE" "$HTTP_STATUS" >&2
-    exit 1
+if [ -z "$LEAGUES" ]; then
+  printf "⚠ No leagues found for season %s\n" "$SEASON"
+  exit 1
 fi
-printf "✔ HuggingFace rebuild triggered for %s (HTTP %s)\n" "$HF_SPACE" "$HTTP_STATUS"
 
-printf "\n✔ Single image processed\n"
+FAILED=()
 
-# ── Per-customer build/deploy (disabled short term) ──────────────────────────
-# Restore this block to build/push/trigger one image + HF space per active
-# customer. Note: process_customer is called in an `if` condition, so `set -e`
-# inside it is suppressed — use `|| return 1` on each critical step instead.
-#
-# process_customer() {
-#     local CUSTOMER_ID="$1"
-#     local SLUG="$2"
-#     local FULL_IMAGE="$DOCKERHUB_USER/$IMAGE_NAME-$SLUG:$TAG"
-#
-#     step "Cleaning previous build artifacts for $SLUG..."
-#     rm -f ./data-raw/*.rda ./*.tar.gz docker/*.tar.gz || return 1
-#
-#     step "Regenerating data for $SLUG..."
-#     CUSTOMER_ID="$CUSTOMER_ID" Rscript ./data-raw/_generate_all.R || return 1
-#
-#     step "Building R package tarball for $SLUG..."
-#     R CMD build . || return 1
-#
-#     step "Building Docker image: $FULL_IMAGE..."
-#     docker build -f ./docker/Dockerfile -t "$FULL_IMAGE" . || return 1
-#
-#     step "Pushing $FULL_IMAGE to Docker Hub..."
-#     docker push "$FULL_IMAGE" || return 1
-#
-#     step "Triggering HuggingFace rebuild for $SLUG..."
-#     local STATUS
-#     STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
-#       "https://huggingface.co/api/spaces/shaggycamel/nba-shiny-$SLUG/restart?factory=true" \
-#       -H "Authorization: Bearer $HUGGINGFACE_TOKEN")
-#     if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
-#         printf "✘ HuggingFace restart failed for %s (HTTP %s)\n" "$SLUG" "$STATUS" >&2
-#         return 1
-#     fi
-# }
-#
-# step "Fetching active customers..."
-# CUSTOMERS=$(psql "$DATABASE_URL" -t -A -F',' -c \
-#   "SELECT customer_id, slug FROM fty.customer WHERE is_active;")
-#
-# FAILED=()
-#
-# while IFS=',' read -r CUSTOMER_ID SLUG; do
-#     [ -z "$CUSTOMER_ID" ] && continue
-#     step "Processing customer: $SLUG ($CUSTOMER_ID)"
-#
-#     if process_customer "$CUSTOMER_ID" "$SLUG"; then
-#         printf "✔ %s done\n" "$SLUG"
-#     else
-#         printf "✘ %s FAILED — continuing to next customer\n" "$SLUG"
-#         FAILED+=("$SLUG")
-#     fi
-# done <<< "$CUSTOMERS"
-#
-# if [ ${#FAILED[@]} -gt 0 ]; then
-#     printf "\n⚠ Failed customers: %s\n" "${FAILED[*]}"
-#     exit 1
-# fi
-#
-# printf "\n✔ All customers processed\n"
+while IFS=',' read -r PLATFORM LEAGUE_ID; do
+  [ -z "$PLATFORM" ] && continue
+
+  case " ${EXCLUDE_LEAGUES} " in
+    *" ${LEAGUE_ID} "*)
+      printf "\n• Skipping league %s (excluded)\n" "$LEAGUE_ID"
+      continue
+      ;;
+  esac
+
+  SLUG="$(printf '%s-%s' "$PLATFORM" "$LEAGUE_ID" | tr '[:upper:]' '[:lower:]')"
+  step "Processing league: ${SLUG} (${PLATFORM} ${LEAGUE_ID})"
+
+  if ( process_league "$PLATFORM" "$LEAGUE_ID" "$SLUG" ); then
+    printf "✔ %s done\n" "$SLUG"
+  else
+    printf "✘ %s FAILED — continuing to next league\n" "$SLUG"
+    FAILED+=("$SLUG")
+  fi
+done <<< "$LEAGUES"
+
+# ── Entry point (optional: only rebuild when its code changes) ────────────────
+if [ "$BUILD_ENTRY" = "1" ]; then
+  step "Building/deploying entry point"
+  if bash "${REPO_DIR}/build_entry.sh"; then
+    printf "✔ entry point done\n"
+  else
+    printf "✘ entry point FAILED\n"
+    FAILED+=("entry")
+  fi
+fi
+
+if [ ${#FAILED[@]} -gt 0 ]; then
+  printf "\n⚠ Failed leagues: %s\n" "${FAILED[*]}"
+  exit 1
+fi
+
+printf "\n✔ All leagues processed\n"

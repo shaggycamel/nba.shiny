@@ -77,6 +77,11 @@ mod_modal_login_server <- function(
 
     # Modal UI structure.
     observe({
+      # Embedded via the entry point: the manager is already set, skip the modal.
+      if (isTRUE(rv_carry_thru$handoff_active)) {
+        return()
+      }
+
       showModal(
         modalDialog(
           tags$head(tags$style(HTML(".selectize-dropdown-content{min-width: 100%; box-sizing: border-box;}"))),

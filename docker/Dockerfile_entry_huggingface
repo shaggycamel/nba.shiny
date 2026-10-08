@@ -1,0 +1,11 @@
+FROM shaggycamel/nba.shiny.entry:latest
+
+EXPOSE 7860
+
+USER rstudio
+
+CMD ["R", "-e", "options('shiny.port'=7860, shiny.host='0.0.0.0'); nba.shiny.entry::run_app()"]
+
+# Hugging Face Space Dockerfile for the entry point. Lives in its own Space
+# repo, stored here as a template. Copy across and point FROM at your entry
+# image when deploying.

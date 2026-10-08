@@ -16,6 +16,17 @@ app_server <- function(input, output, session) {
   rv_copy_teams <- reactiveVal(NULL)
   rv_switch_league_trigger <- reactiveVal(0L)
 
+  # ------- Handoff from the entry point (embedded mode)
+  # url_search arrives with clientData, so read it reactively.
+  observe({
+    handoff <- parse_handoff(session$clientData$url_search)
+    if (!is.null(handoff) && is.null(isolate(rv_carry_thru$handoff_active))) {
+      seed_handoff(rv_carry_thru, handoff)
+      removeModal()
+      shinyjs::hide("fty_league_competitor_switch")
+    }
+  })
+
   #------- Login modal
   mod_modal_login_server(
     "modal_login_1",

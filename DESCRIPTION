@@ -20,6 +20,7 @@ Imports:
     ini,
     later,
     lubridate,
+    nba.shiny.core,
     plotly,
     purrr,
     r2d3,

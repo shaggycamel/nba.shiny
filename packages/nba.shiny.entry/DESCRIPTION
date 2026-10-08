@@ -1,0 +1,22 @@
+Package: nba.shiny.entry
+Title: NBA Shiny Entry Point
+Version: 0.0.1
+Authors@R:
+    person("Oliver", "Eaton", , "eat_fred@proton.me", role = c("aut", "cre"))
+Description: Authenticated entry point. Logs a customer in, lists the leagues
+    they belong to, and embeds the matching league dashboard container as a
+    signed iframe.
+License: MIT + file LICENSE
+Encoding: UTF-8
+RoxygenNote: 8.0.0
+Depends:
+    R (>= 4.1.0)
+Imports:
+    bslib,
+    DBI,
+    htmltools,
+    nba.shiny.core,
+    shiny
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

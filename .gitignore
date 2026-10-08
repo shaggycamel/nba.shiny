@@ -10,3 +10,6 @@
 docker/renv.lock
 docker/*.tar.gz
 *.tar.gz
+
+# Local admin scripts (not versioned)
+scripts/

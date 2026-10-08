@@ -164,4 +164,66 @@ dfs_rolling_stats <- df_nba_player_box_score |>
   })
 
 
-usethis::use_data(ls_nba_teams, overwrite = TRUE)
+# Recent injuries (shared) -----------------------------------------------
+
+min_inj_date <- as.Date(cur_date - days(30))
+df_ns_injuries <-
+  tbl(db_con, I("nba.injuries")) |>
+  filter(game_date >= min_inj_date, status == "Out") |>
+  as_tibble() |>
+  mutate(
+    across(ends_with("_id"), \(x) as.integer(x)),
+    opponent = str_remove(matchup, "@"),
+    opponent = str_remove(opponent, team_slug),
+    opponent = str_squish(opponent)
+  ) |>
+  left_join(
+    df_nba_roster |>
+      select(nba_id = player_id, salary) |>
+      distinct(),
+    by = join_by(nba_id)
+  ) |>
+  select(team = team_slug, opponent, game_date, player_name, salary) |>
+  arrange(desc(game_date), desc(salary)) |>
+  summarise(player_names = paste(player_name, collapse = ", "), .by = c(team, opponent, game_date))
+
+ls_injuries <-
+  map(set_names(names(dfs_rolling_stats)), \(x) {
+    df_ns_injuries |>
+      filter(game_date >= max(game_date) - days(x)) |>
+      nest_by(team, .keep = TRUE) |>
+      deframe()
+  })
+
+
+# Player game log (shared) -----------------------------------------------
+
+ls_player_game_log <-
+  df_nba_player_box_score |>
+  filter(between(game_date, max(game_date) - ddays(30), max(game_date) - ddays(1))) |>
+  select(player_id, game_date, opponent, any_of(cats)) |>
+  arrange(desc(game_date)) |>
+  nest_by(player_id) |>
+  deframe()
+
+
+# Write data -------------------------------------------------------------
+
+# Generation-only shared objects are cached for _generate_league.R so the base
+# layer is built once and reused by every league container. The runtime shared
+# objects are written to data/ by the league layer, keeping per-league builds
+# self-contained.
+cache_dir <- here::here("data-raw", "cache")
+dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
+save(
+  df_nba_player_box_score,
+  df_nba_schedule,
+  df_nba_season_segments,
+  df_nba_roster,
+  dfs_rolling_stats,
+  ls_nba_teams,
+  ls_injuries,
+  ls_player_game_log,
+  file = file.path(cache_dir, "base.rda"),
+  compress = "xz"
+)

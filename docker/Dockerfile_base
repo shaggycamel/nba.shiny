@@ -27,3 +27,8 @@ RUN R -e 'remotes::install_version("renv", version = "1.2.3")'
 COPY renv.lock renv.lock
 RUN --mount=type=cache,id=renv-cache,target=/root/.cache/R/renv \
     R -e 'renv::restore(prompt = FALSE)'
+
+# Shared package used by both the league dashboards and the entry point.
+COPY packages/nba.shiny.core /tmp/nba.shiny.core
+RUN R -e 'install.packages("/tmp/nba.shiny.core", repos = NULL, type = "source")' \
+    && rm -rf /tmp/nba.shiny.core
