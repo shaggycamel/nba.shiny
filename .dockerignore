@@ -14,6 +14,7 @@ nba.shiny.*/tests/
 nba.shiny.*/man/
 docs/
 deploy/
+e2e/
 
 # Host secrets and local admin scripts — never sent to the daemon
 .profile

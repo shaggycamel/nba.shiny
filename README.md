@@ -19,6 +19,7 @@ packages plus the container/deploy pipeline.
   handoff tokens.
 - `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
   pipeline (`cron.sh` is the single deploy entry point).
+- `e2e/` — browser end-to-end test (entry login → signed iframe → league).
 - `docs/` — deployment runbook.
 
 ## Run locally
@@ -41,3 +42,6 @@ devtools::test("nba.shiny.league")
 devtools::test("nba.shiny.core")
 devtools::test("nba.shiny.entry")
 ```
+
+Browser end-to-end (entry login → signed iframe → league dashboard) lives in
+[`e2e/`](e2e/README.md).
