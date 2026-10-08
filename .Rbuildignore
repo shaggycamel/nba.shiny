@@ -11,7 +11,12 @@ $run_dev.*
 ^README\.Rmd$
 ^CODE_OF_CONDUCT\.md$
 ^docker$
+^\.dockerignore$
 ^deploy$
 ^packages$
 ^scripts$
+^cron\.sh$
+^build_entry\.sh$
+^build_all\.sh$
 ^nba-shiny-architecture\.md$
+^NUC_DEPLOY\.md$
