@@ -6,8 +6,9 @@
 # entry point. A thin wrapper around cron.sh + build_entry.sh.
 #
 # Config (env vars):
-#   DATABASE_URL   (required) psql URL used to list leagues
 #   DOCKERHUB_TOKEN, HUGGINGFACE_TOKEN   (required unless DRY_RUN=1)
+#   DOCKERHUB_USER (default shaggycamel)
+#   NBA_SEASON (default 2025-26), NBA_DB_SECTION (default cockroach-read)
 #   DRY_RUN=1        run through the motions without building/pushing/deploying
 #   REBUILD_BASE=1   rebuild the (slow) base image even if it exists
 #   PROVISION=1      create HF Spaces if missing
@@ -30,8 +31,6 @@ PROVISION="${PROVISION:-0}"
 SKIP_ENTRY="${SKIP_ENTRY:-0}"
 
 step() { printf "\n=== %s ===\n\n" "$*"; }
-
-: "${DATABASE_URL:?DATABASE_URL is required}"
 
 if [ "$DRY_RUN" = "1" ]; then
   step "[dry-run] ensure base image ${BASE_IMAGE}"

@@ -13,3 +13,6 @@ docker/*.tar.gz
 
 # Local admin scripts (not versioned)
 scripts/
+
+# Deploy host secrets (tokens, DB URL) — never commit
+.profile

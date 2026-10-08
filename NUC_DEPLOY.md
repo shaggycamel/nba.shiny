@@ -21,18 +21,26 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 ## 2. Prerequisites (verify before starting)
 
 - Docker is running and can reach Docker Hub.
-- `psql` (PostgreSQL client) is installed.
-- `R` (>= 4.1) is installed; generation uses `data-raw/`.
+- `R` (>= 4.1) is installed; generation and league listing use `data-raw/`.
 - Credentials INI exists: `~/.config/sports-hub-credentials.ini` with a
   `cockroach-read` section (and `postgres` for local). Generation defaults to
-  `NBA_DB_SECTION=cockroach-read`.
-- These env vars are set (they normally live in `./.profile`, which the scripts
-  source automatically when run non-interactively / from cron):
-  - `DATABASE_URL` — psql URL to list leagues.
-  - `DOCKERHUB_TOKEN` — Docker Hub push token.
-  - `HUGGINGFACE_TOKEN` — HF token with **write** access to the Spaces.
+  `NBA_DB_SECTION=cockroach-read`. (No `psql` needed — leagues are listed via R.)
+- A `./.profile` on the nuc exports the tokens (the scripts source it
+  automatically when run non-interactively; for a manual run, source it first):
+  - `DOCKERHUB_TOKEN` — Docker Hub push token (required).
+  - `HUGGINGFACE_TOKEN` — HF token with **write** access to the Spaces (required).
   - `DOCKERHUB_USER` (default `shaggycamel`), `NBA_HF_OWNER` (default `shaggycamel`),
     `NBA_SEASON` (default `2025-26`).
+
+  Create it once (git-ignored, never commit):
+  ```bash
+  cat > ~/github/nba.shiny/.profile <<'EOF'
+  export DOCKERHUB_USER=shaggycamel
+  export DOCKERHUB_TOKEN=...
+  export HUGGINGFACE_TOKEN=...
+  EOF
+  chmod 600 ~/github/nba.shiny/.profile
+  ```
 
 Preflight:
 
@@ -40,8 +48,12 @@ Preflight:
 cd ~/github/nba.shiny
 git pull                      # MUST be up to date; see §3
 docker info >/dev/null && echo docker-ok
-psql "$DATABASE_URL" -tAc "select 1" && echo db-ok
 test -f ~/.config/sports-hub-credentials.ini && echo ini-ok
+set -a; source ./.profile; set +a
+for v in DOCKERHUB_TOKEN HUGGINGFACE_TOKEN; do
+  [ -n "${!v:-}" ] && echo "$v set" || echo "$v MISSING"
+done
+NBA_SEASON="${NBA_SEASON:-2025-26}" Rscript ./data-raw/_list_leagues.R   # lists leagues
 ```
 
 ## 3. Code must be pushed first
@@ -75,15 +87,15 @@ openssl rand -hex 32
 
 ## 5. Build + deploy
 
-Run from the repo root. Always dry-run first.
+Run from the repo root. Source the tokens first, and always dry-run first.
 
 ```bash
+set -a; source ./.profile; set +a
+
 # 5.0 Dry run (no docker, no push, no deploy)
-DATABASE_URL="$DATABASE_URL" DRY_RUN=1 PROVISION=1 bash build_all.sh
+DRY_RUN=1 PROVISION=1 bash build_all.sh
 
 # 5.1 Real run. PROVISION=1 creates any missing HF Spaces.
-DATABASE_URL="$DATABASE_URL" \
-DOCKERHUB_TOKEN="$DOCKERHUB_TOKEN" HUGGINGFACE_TOKEN="$HUGGINGFACE_TOKEN" \
 PROVISION=1 bash build_all.sh
 ```
 
@@ -180,8 +192,9 @@ dashboard should load inside the iframe, already scoped to that customer's manag
 - **Base build fails / `nba.shiny.core` missing**: check `renv.lock` includes
   `openssl`, `digest`, `ini`, `bslib`, `DBI`, `RPostgres`. Rebuild with
   `REBUILD_BASE=1`.
-- **`psql` / "no leagues found"**: `DATABASE_URL` wrong, or `fty.league` has no rows
-  for `NBA_SEASON`. Check `select platform, league_id from fty.league where season='...'`.
+- **"no leagues found"**: `fty.league` has no rows for `NBA_SEASON`, or the
+  credentials INI section is wrong. Debug with
+  `NBA_SEASON=2025-26 Rscript data-raw/_list_leagues.R`.
 - **HF restart returns non-2xx**: the Space does not exist (run with `PROVISION=1`)
   or `HUGGINGFACE_TOKEN` lacks write access.
 - **401/blank league dashboard**: `NBA_HANDOFF_SECRET` differs between entry and the

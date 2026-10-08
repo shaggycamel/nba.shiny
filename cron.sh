@@ -34,7 +34,6 @@ PROVISION="${PROVISION:-0}"
 
 DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:-}"
 HUGGINGFACE_TOKEN="${HUGGINGFACE_TOKEN:-}"
-DATABASE_URL="${DATABASE_URL:-}"
 
 # shellcheck source=/dev/null
 source "${REPO_DIR}/deploy/adapter.sh"
@@ -98,8 +97,6 @@ process_league() {
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 
-: "${DATABASE_URL:?DATABASE_URL is required}"
-
 build_base || exit 1
 
 if [ "$DRY_RUN" != "1" ]; then
@@ -113,19 +110,7 @@ if [ "$DRY_RUN" != "1" ]; then
 fi
 
 step "Fetching active leagues for season ${SEASON}"
-# Use fty.league.slug / is_active when the registry columns exist; otherwise
-# fall back to deriving the slug from platform + league_id.
-LEAGUE_COLS="$(psql "$DATABASE_URL" -t -A -c \
-  "select column_name from information_schema.columns
-   where table_schema = 'fty' and table_name = 'league'" 2>/dev/null | tr '\n' ',')"
-SLUG_EXPR="null::text"
-ACTIVE_CLAUSE=""
-case ",${LEAGUE_COLS}," in *,slug,*) SLUG_EXPR="slug::text" ;; esac
-case ",${LEAGUE_COLS}," in *,is_active,*) ACTIVE_CLAUSE="and coalesce(is_active, true)" ;; esac
-
-LEAGUES="$(psql "$DATABASE_URL" -t -A -F',' -c \
-  "SELECT platform, league_id, ${SLUG_EXPR} AS slug
-   FROM fty.league WHERE season = '${SEASON}' ${ACTIVE_CLAUSE} ORDER BY league_id;" 2>/dev/null)"
+LEAGUES="$(NBA_SEASON="$SEASON" Rscript ./data-raw/_list_leagues.R 2>/dev/null)"
 
 if [ -z "$LEAGUES" ]; then
   printf "⚠ No leagues found for season %s\n" "$SEASON"
