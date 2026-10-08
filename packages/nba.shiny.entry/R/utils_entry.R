@@ -44,10 +44,18 @@ check_credentials <- function(con, email, password) {
     return(NA_character_)
   }
 
+  cols <- DBI::dbGetQuery(
+    con,
+    "select column_name from information_schema.columns
+     where table_schema = 'fty' and table_name = 'customer'"
+  )$column_name
+  hash_expr <- if ("password_hash" %in% cols) "password_hash" else "null::text as password_hash"
+
   row <- DBI::dbGetQuery(
     con,
     sprintf(
-      "select customer_id, password_hash from fty.customer where lower(email) = lower(%s) limit 1",
+      "select customer_id, %s from fty.customer where lower(email) = lower(%s) limit 1",
+      hash_expr,
       DBI::dbQuoteString(con, email)
     )
   )
