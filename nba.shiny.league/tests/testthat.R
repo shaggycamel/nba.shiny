@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(nba.shiny)
+library(nba.shiny.league)
 
-test_check("nba.shiny")
+test_check("nba.shiny.league")

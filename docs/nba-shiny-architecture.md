@@ -137,7 +137,7 @@ which forces two tarballs from one source and a LazyData trap):
 
 ### Generation Pipeline
 
-Replace the per-customer flow (`data-raw/_generate_all.R` parameterised by `CUSTOMER_ID`)
+Replace the per-customer flow (`nba.shiny.league/data-raw/_generate_all.R` parameterised by `CUSTOMER_ID`)
 with league-scoped generation:
 
 1. **`_generate_base.R`** — the NBA/shared half of `02_nba_base.R`; run once per release.
@@ -253,7 +253,7 @@ Platform) are a more natural next step than RunPod, which is optimised for burst
    startup path for the league container.
 3. Add `db_connect(env)` and formalise `util.player_id_map_vw`; keep `test-data-pipeline.R`.
 4. Add `fty.customer_league` and `fty.league`; create the signed-URL helper + validation.
-5. Split `data-raw/` into `_generate_base.R` and `_generate_league.R`; remove `customer_id` filters.
+5. Split `nba.shiny.league/data-raw/` into `_generate_base.R` and `_generate_league.R`; remove `customer_id` filters.
 6. Add `nba.shiny_data` image layer; rewrite `cron.sh` to loop leagues and use the deploy adapter.
 7. Prove the flow end-to-end on HF: login → select league → signed iframe → manager spotlight.
 8. Test isolation: unsigned/expired iframe refused; cross-league access blocked.

@@ -61,6 +61,7 @@ build_base() {
 
 R_IMAGE="${R_IMAGE:-$BASE_IMAGE}"
 R_CREDS_DIR="${R_CREDS_DIR:-$HOME/.config}"
+PKG_DIR="${PKG_DIR:-nba.shiny.league}"
 
 run_r() {
   docker run --rm \
@@ -71,7 +72,7 @@ run_r() {
     -e LEAGUE_ID="${LEAGUE_ID:-}" \
     -v "${REPO_DIR}:/work" \
     -v "${R_CREDS_DIR}:/root/.config:ro" \
-    -w /work \
+    -w "/work/${PKG_DIR}" \
     "$R_IMAGE" "$@"
 }
 
@@ -98,7 +99,7 @@ process_league() {
 
   if [ "$DRY_RUN" != "1" ]; then
     step "Generating data for ${slug} (LEAGUE_ID=${league_id})"
-    rm -f ./data/*.rda ./*.tar.gz || fail "cleaning build artifacts"
+    rm -f "./${PKG_DIR}/data"/*.rda "./${PKG_DIR}"/*.tar.gz || fail "cleaning build artifacts"
     LEAGUE_ID="$league_id" run_r Rscript ./data-raw/_generate_league.R || fail "data generation"
 
     step "Building R package tarball"
@@ -117,7 +118,7 @@ process_league() {
 
   if [ "$PROVISION" = "1" ]; then
     step "Provisioning ${slug}"
-    adapter_provision "$slug" "$image" "nba.shiny" || fail "provision"
+    adapter_provision "$slug" "$image" "nba.shiny.league" || fail "provision"
   fi
 
   step "Deploying ${slug}"

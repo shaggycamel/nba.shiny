@@ -9,7 +9,7 @@
 #'
 #' @noRd
 app_sys <- function(...) {
-  system.file(..., package = "nba.shiny")
+  system.file(..., package = "nba.shiny.league")
 }
 
 

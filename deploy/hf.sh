@@ -20,7 +20,7 @@ adapter_url() {
 adapter_provision() {
   local slug="$1"
   local image="$2"
-  local app="${3:-nba.shiny}"
+  local app="${3:-nba.shiny.league}"
   local name="nba-shiny-${slug}"
   local repo="${HF_OWNER}/${name}"
 
@@ -45,11 +45,12 @@ adapter_provision() {
   fi
 
   # Existing Spaces may be empty or missing the library() call that attaches
-  # LazyData. Rewrite the Dockerfile unless it already loads the package.
+  # LazyData, or may still load an older app name. Rewrite the Dockerfile unless
+  # it already loads the current app.
   local df_body
   df_body="$(curl -s -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
     "https://huggingface.co/api/spaces/${repo}/raw/main/Dockerfile")"
-  if printf '%s' "$df_body" | grep -q "library("; then
+  if printf '%s' "$df_body" | grep -qF "library(${app})"; then
     echo "[hf] ${repo} already configured"
     return 0
   fi

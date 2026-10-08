@@ -1,5 +1,5 @@
-Package: nba.shiny
-Title: NBA Shiny
+Package: nba.shiny.league
+Title: NBA Shiny League
 Version: 0.0.0.9000
 Authors@R: 
     person("Oliver", "Eaton", , "eat_fred@protonmail.com", role = c("aut", "cre"))

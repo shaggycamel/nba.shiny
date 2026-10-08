@@ -9,9 +9,10 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 
 ## 1. Context
 
-- Repo: `nba.shiny` (R package at repo root = the **league dashboard**).
-- Extra packages: `packages/nba.shiny.core` (shared theme/db/token/password) and
-  `packages/nba.shiny.entry` (the **entry point**: auth → league picker → signed iframe).
+- Repo: `nba.shiny` (monorepo; the league dashboard is the `nba.shiny.league/`
+  package, which holds `data-raw/` and is built from its own directory).
+- Sibling packages: `nba.shiny.core/` (shared theme/db/token/password) and
+  `nba.shiny.entry/` (the **entry point**: auth → league picker → signed iframe).
 - Containers are built from Docker images and deployed as **one HF Space per league**
   plus a single **entry Space**. League containers bake their data at build time;
   the entry point reads customer/league data from CockroachDB at runtime.
@@ -198,7 +199,7 @@ dashboard should load inside the iframe, already scoped to that customer's manag
   `REBUILD_BASE=1`.
 - **"no leagues found"**: `fty.league` has no rows for `NBA_SEASON`, or the
   credentials INI section is wrong. Debug inside the base image:
-  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work nba.shiny_base:latest Rscript ./data-raw/_list_leagues.R`
+  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work/nba.shiny.league nba.shiny_base:latest Rscript ./data-raw/_list_leagues.R`
 - **HF restart returns non-2xx**: the Space does not exist (run with `PROVISION=1`)
   or `HUGGINGFACE_TOKEN` lacks write access.
 - **401/blank league dashboard**: `NBA_HANDOFF_SECRET` differs between entry and the

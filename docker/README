@@ -4,8 +4,8 @@
 #    it only checks that nba.shiny_base:latest exists.
 docker build -f docker/Dockerfile_base --progress=plain -t nba.shiny_base:latest .
 
-# 2. Build the app tarball, then the app image.
-R CMD build .
+# 2. Build the app tarball (from inside the league package), then the app image.
+( cd nba.shiny.league && R CMD build . )
 docker build -f docker/Dockerfile --progress=plain -t shaggycamel/nba.shiny:latest .
 
 # 3. Run it.

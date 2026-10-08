@@ -1,7 +1,7 @@
 FROM nba.shiny_base:latest
 
 # The entry point app. nba.shiny.core is already installed in the base image.
-COPY packages/nba.shiny.entry /tmp/nba.shiny.entry
+COPY nba.shiny.entry /tmp/nba.shiny.entry
 RUN R -e 'install.packages("/tmp/nba.shiny.entry", repos = NULL, type = "source")' \
     && rm -rf /tmp/nba.shiny.entry
 

@@ -19,17 +19,17 @@ knitr::opts_chunk$set(
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-An NBA fantasy dashboard built with Shiny and [{golem}](https://thinkr-open.github.io/golem/).
-It is deployed to multiple customers through a single authenticated entry point
-and shared, league-scoped containers.
+An NBA fantasy dashboard built with Shiny and [{golem}](https://thinkr-open.github.io/golem/),
+deployed to multiple customers through a single authenticated entry point and
+shared, league-scoped containers. This repository is a small monorepo of three R
+packages plus the container/deploy pipeline.
 
 ## Repository layout
 
-- `R/`, `inst/`, `data-raw/` — the **league dashboard** package (`nba.shiny`).
-- `packages/nba.shiny.core/` — shared theme, database access, password hashing
-  and handoff tokens.
-- `packages/nba.shiny.entry/` — the **entry point**: auth → league picker →
-  signed iframe.
+- `nba.shiny.league/` — the **league dashboard** package (the Shiny app).
+- `nba.shiny.entry/` — the **entry point**: auth → league picker → signed iframe.
+- `nba.shiny.core/` — shared theme, database access, password hashing and
+  handoff tokens.
 - `docker/`, `deploy/`, `cron.sh`, `build_*.sh` — container build and deploy
   pipeline.
 - `docs/` — architecture and deployment runbook.
@@ -38,7 +38,8 @@ and shared, league-scoped containers.
 
 ```{r, eval = FALSE}
 renv::restore()
-nba.shiny::run_app()
+devtools::load_all("nba.shiny.league")
+nba.shiny.league::run_app()
 ```
 
 ## Deploy
@@ -50,5 +51,7 @@ Builds and deploys run from the repo root. See
 ## Tests
 
 ```{r, eval = FALSE}
-devtools::test()
+devtools::test("nba.shiny.league")
+devtools::test("nba.shiny.core")
+devtools::test("nba.shiny.entry")
 ```

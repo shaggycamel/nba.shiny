@@ -12,7 +12,7 @@
 # testthat::local_mocked_bindings() cannot reach them. Functions read them from
 # the attached package environment, so swap them in there and restore on exit.
 local_pkg_data <- function(..., .env = parent.frame()) {
-  pkg <- as.environment("package:nba.shiny")
+  pkg <- as.environment("package:nba.shiny.league")
   bindings <- list(...)
   nms <- names(bindings)
 
