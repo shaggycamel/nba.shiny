@@ -12,6 +12,8 @@ app_server <- function(input, output, session) {
   rv <- reactiveValues(customer_id = NULL, name = NULL)
 
   observeEvent(input$login, {
+    session$sendCustomMessage("login-busy", TRUE)
+
     customer_id <- check_credentials(con, input$email, input$password)
     if (is.na(customer_id)) {
       customer_id <- dev_login(input$email, input$password, con)
@@ -19,6 +21,7 @@ app_server <- function(input, output, session) {
 
     if (is.na(customer_id)) {
       output$login_message <- renderText("Invalid email or password")
+      session$sendCustomMessage("login-busy", FALSE)
       return()
     }
 
@@ -76,25 +79,42 @@ app_server <- function(input, output, session) {
     }
   })
 
+  competitors <- reactive({
+    sel <- parse_league_value(req(input$league))
+    get_league_competitors(con, sel$platform, sel$league_id, season)
+  })
+
   output$competitor_ui <- renderUI({
     if (!is.na(mapped_competitor())) {
       return(NULL)
     }
 
-    sel <- parse_league_value(input$league)
-    comps <- get_league_competitors(con, sel$platform, sel$league_id, season)
-    shiny::selectInput(
-      "competitor",
-      "Manager",
-      choices = stats::setNames(comps$competitor_id, comps$competitor_name),
-      width = "240px"
+    comps <- competitors()
+    tags$div(
+      class = "d-flex align-items-center gap-2",
+      tags$label(`for` = "competitor", class = "visually-hidden", "Manager"),
+      shiny::selectInput(
+        "competitor",
+        label = NULL,
+        choices = stats::setNames(comps$competitor_id, comps$competitor_name),
+        width = "220px"
+      )
     )
   })
 
   output$iframe <- renderUI({
     sel <- parse_league_value(req(input$league))
-    competitor_id <- if (!is.na(mapped_competitor())) mapped_competitor() else input$competitor
-    req(competitor_id)
+    competitor_id <- if (!is.na(mapped_competitor())) {
+      mapped_competitor()
+    } else if (!is.null(input$competitor) && input$competitor %in% competitors()$competitor_id) {
+      input$competitor
+    } else {
+      NULL
+    }
+
+    if (is.null(competitor_id) || !nzchar(as.character(competitor_id))) {
+      return(tags$div(class = "app-frame-empty", "Select a manager to load the dashboard."))
+    }
 
     url <- league_iframe_url(
       league_container_url(),
@@ -104,9 +124,18 @@ app_server <- function(input, output, session) {
       competitor_id = competitor_id
     )
 
-    tags$iframe(
-      src = url,
-      style = "border: 0; width: 100%; height: calc(100vh - 150px);"
+    tagList(
+      tags$div(
+        class = "app-frame-loading",
+        id = "league_loading",
+        tags$div(class = "spinner-border text-primary mb-2", role = "status"),
+        tags$span("Loading league dashboard...")
+      ),
+      tags$iframe(
+        src = url,
+        title = "League dashboard",
+        onload = "var el=document.getElementById('league_loading'); if (el) el.style.display='none';"
+      )
     )
   })
 }
