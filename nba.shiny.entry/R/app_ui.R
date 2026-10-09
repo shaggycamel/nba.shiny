@@ -30,6 +30,12 @@ app_ui <- function(request) {
 
          .selectize-dropdown-content { min-width: 100%; box-sizing: border-box; }
 
+         /* Selected/active league in the switcher: a lighter shade of the button blue. */
+         .selectize-dropdown .option.active,
+         .selectize-dropdown .option.selected {
+           background-color: #cfe2f3; color: #1f4e79;
+         }
+
          /* Login modal: blue title bar matching the button. */
          .modal-dialog:has(.login-fields) .modal-content { overflow: hidden; }
          .modal-dialog:has(.login-fields) .modal-header {
