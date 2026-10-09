@@ -36,7 +36,7 @@ test_that("get_customer_name falls back sensibly", {
   expect_equal(get_customer_name(con, "does-not-exist"), "does-not-exist")
 })
 
-test_that("check_credentials verifies a stored pbkdf2 hash", {
+test_that("check_credentials verifies a stored bcrypt hash", {
   con <- entry_db()
   skip_if(is.null(con), "no local postgres available")
   on.exit(DBI::dbDisconnect(con), add = TRUE)
@@ -52,7 +52,7 @@ test_that("check_credentials verifies a stored pbkdf2 hash", {
     sprintf(
       "insert into fty.customer (customer_id, name, email, password_hash)
        values ('__test_customer__', 'Test User', '__test__@example.com', %s)",
-      DBI::dbQuoteString(con, nba.shiny.core::hash_password("hunter2", iterations = 1000L))
+      DBI::dbQuoteString(con, nba.shiny.core::hash_password("hunter2", cost = 4L))
     )
   )
 

@@ -12,8 +12,15 @@ test_that("pbkdf2-sha256 matches RFC test vectors", {
   )
 })
 
-test_that("hash_password / verify_password round-trip", {
-  h <- hash_password("s3cret", iterations = 1000L)
+test_that("hash_password defaults to bcrypt and round-trips", {
+  h <- hash_password("s3cret", cost = 4L)
+  expect_true(startsWith(h, "$2"))
+  expect_true(verify_password("s3cret", h))
+  expect_false(verify_password("wrong", h))
+})
+
+test_that("hash_password can still produce the legacy pbkdf2 format", {
+  h <- hash_password("s3cret", scheme = "pbkdf2", iterations = 1000L)
   expect_true(startsWith(h, "pbkdf2-sha256$1000$"))
   expect_true(verify_password("s3cret", h))
   expect_false(verify_password("wrong", h))
@@ -27,8 +34,8 @@ test_that("verify_password rejects empty and unknown formats", {
 })
 
 test_that("a fresh salt makes each hash unique but both verify", {
-  a <- hash_password("same", iterations = 10L)
-  b <- hash_password("same", iterations = 10L)
+  a <- hash_password("same", cost = 4L)
+  b <- hash_password("same", cost = 4L)
   expect_false(identical(a, b))
   expect_true(verify_password("same", a))
   expect_true(verify_password("same", b))

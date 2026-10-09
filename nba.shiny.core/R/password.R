@@ -1,13 +1,14 @@
 # Password hashing -----------------------------------------------------------
-# Default scheme is PBKDF2-HMAC-SHA256, implemented with digest (already a
-# dependency), so no compiled hashing library is required. Encoded output is a
-# self-describing string:
+# Default scheme is bcrypt ($2a$...), produced by the compiled {bcrypt} package,
+# so verification is fast (tens of milliseconds) on constrained hosts. The
+# legacy PBKDF2-HMAC-SHA256 scheme is still supported for verifying existing
+# hashes; its encoded output is a self-describing string:
 #
 #   pbkdf2-sha256$<iterations>$<salt_hex>$<hash_hex>
 #
-# verify_password() also recognises bcrypt ($2a/$2b/$2y$) and argon2
-# ($argon2...) hashes when the corresponding package is installed, so the
-# column can hold a different scheme later without a migration.
+# verify_password() also recognises argon2 ($argon2...) hashes when the
+# corresponding package is installed, so the column can hold a different scheme
+# without a migration.
 
 raw_to_hex <- function(x) {
   paste(sprintf("%02x", as.integer(x)), collapse = "")
@@ -69,17 +70,40 @@ constant_time_eq <- function(a, b) {
 
 #' Hash a password
 #'
-#' Produces an encoded PBKDF2-HMAC-SHA256 string suitable for storage in a text
-#' column (`fty.customer.password_hash`).
+#' Produces an encoded hash suitable for storage in a text column
+#' (`fty.customer.password_hash`). Defaults to bcrypt (`scheme = "bcrypt"`);
+#' pass `scheme = "pbkdf2"` for the legacy PBKDF2-HMAC-SHA256 format.
 #'
 #' @param password The password (single string).
-#' @param iterations PBKDF2 iteration count.
-#' @param salt Optional salt as raw bytes; random by default.
+#' @param cost bcrypt cost (log2 of the key-stretching rounds), 4-31. Defaults
+#'   to 12.
+#' @param scheme Hashing scheme; `"bcrypt"` (default) or `"pbkdf2"`.
+#' @param iterations PBKDF2 iteration count (ignored for bcrypt).
+#' @param salt Optional PBKDF2 salt as raw bytes; random by default.
 #'
 #' @return An encoded hash string.
 #' @export
-hash_password <- function(password, iterations = 100000L, salt = openssl::rand_bytes(16L)) {
+hash_password <- function(
+  password,
+  cost = 12L,
+  scheme = c("bcrypt", "pbkdf2"),
+  iterations = 100000L,
+  salt = openssl::rand_bytes(16L)
+) {
   stopifnot(is.character(password), length(password) == 1L, nzchar(password))
+  scheme <- match.arg(scheme)
+
+  if (scheme == "bcrypt") {
+    if (!requireNamespace("bcrypt", quietly = TRUE)) {
+      stop("the {bcrypt} package is required to hash passwords", call. = FALSE)
+    }
+    cost <- as.integer(cost)
+    if (is.na(cost) || cost < 4L || cost > 31L) {
+      stop("cost must be an integer between 4 and 31", call. = FALSE)
+    }
+    return(bcrypt::hashpw(password, bcrypt::gensalt(cost)))
+  }
+
   iterations <- as.integer(iterations)
   if (is.na(iterations) || iterations < 1L) {
     stop("iterations must be a positive integer", call. = FALSE)
