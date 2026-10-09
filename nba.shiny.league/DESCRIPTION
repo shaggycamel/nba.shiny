@@ -29,6 +29,7 @@ Imports:
     RPostgres,
     scales,
     shiny,
+    shinycssloaders,
     shinyjs,
     shinyWidgets,
     stringr,

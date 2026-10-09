@@ -3,8 +3,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// Browser end-to-end test: entry login -> league picker -> signed iframe ->
-// league dashboard scoped to the customer's manager.
+// Browser end-to-end test: entry login -> league chooser -> signed iframe ->
+// league dashboard, then switching leagues from the dashboard's own button.
 //
 // Env:
 //   E2E_EMAIL, E2E_PASSWORD        (required) credentials for a test customer
@@ -42,18 +42,26 @@ page.on("requestfailed", (r) =>
   consoleErrors.push(`reqfail: ${r.url()} ${r.failure()?.errorText}`)
 );
 
-// The picker is a selectize control; the native <select> is hidden, so set the
+// The chooser is a selectize control; the native <select> is hidden, so set the
 // value through selectize rather than Playwright's selectOption.
-const selectLeague = (value) =>
+const setLeagueSelect = (value) =>
   page.evaluate((val) => {
-    const el = document.querySelector("select#league");
+    const el = document.querySelector("select#league_choice");
     if (el && el.selectize && typeof el.selectize.setValue === "function") {
       el.selectize.setValue(val, false);
-    } else {
+    } else if (el) {
       el.value = val;
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }
   }, value);
+
+const chooseLeague = async (value) => {
+  await setLeagueSelect(value);
+  await page.click("#league_choose_confirm");
+};
+
+const leagueFrame = (origin) =>
+  page.frames().find((fr) => fr.url().startsWith(origin));
 
 try {
   await page.goto(ENTRY, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -62,40 +70,48 @@ try {
   await page.fill("#password", PASSWORD);
   await page.click("#login");
 
-  await Promise.race([
-    page.waitForSelector("select#league", { timeout: 60000, state: "attached" }),
-    page
-      .waitForSelector("#login_message:not(:empty)", { timeout: 60000 })
-      .then(async () => {
-        throw new Error("login failed: " + (await page.textContent("#login_message")));
-      }),
-  ]);
+  await page.waitForSelector("#login_message:not(:empty)", { timeout: 60000 })
+    .then(async () => {
+      throw new Error("login failed: " + (await page.textContent("#login_message")));
+    })
+    .catch(() => {});
 
-  // selectize may hide non-selected options from the native select; prefer its
-  // own option set when available.
+  // The chooser opens automatically for a multi-league customer.
+  await page.waitForSelector("select#league_choice", { state: "attached", timeout: 60000 });
+  await page.screenshot({ path: path.join(SHOTS, "chooser.png") });
+
   const leagueList = await page.evaluate(() => {
-    const el = document.querySelector("select#league");
-    if (el && el.selectize) return Object.keys(el.selectize.options);
-    return Array.from(el.options).map((o) => o.value);
+    const el = document.querySelector("select#league_choice");
+    return el && el.selectize ? Object.keys(el.selectize.options) : [];
   });
   console.log("leagues offered:", JSON.stringify(leagueList));
-  await page.screenshot({ path: path.join(SHOTS, "shell.png") });
 
-  for (const value of leagueList) {
+  for (let i = 0; i < leagueList.length; i++) {
+    const value = leagueList[i];
     const entry = { league: value, ok: false, notes: [] };
     try {
-      await selectLeague(value);
+      if (i > 0) {
+        // Reopen the chooser from the dashboard's own League button.
+        const prevSrc = await page.$eval("iframe#league_frame", (f) => f.src);
+        const prevOrigin = new URL(prevSrc).origin;
+        const frame = leagueFrame(prevOrigin);
+        if (!frame) throw new Error("previous league frame not found");
+        await frame.click("#fty_league_competitor_switch");
+        await page.waitForSelector("select#league_choice", { state: "attached", timeout: 30000 });
+      }
+
+      await chooseLeague(value);
 
       const leagueId = value.split(":")[1];
       await page.waitForFunction(
         (id) => {
-          const f = document.querySelector("iframe");
+          const f = document.querySelector("iframe#league_frame");
           return !!f && f.src.includes("sig=") && f.src.includes(`league_id=${id}`);
         },
         leagueId,
         { timeout: 30000 }
       );
-      const src = await page.$eval("iframe", (f) => f.src);
+      const src = await page.$eval("iframe#league_frame", (f) => f.src);
       const q = new URL(src).searchParams;
       entry.competitor_id = q.get("competitor_id");
       entry.has_sig = !!q.get("sig");
@@ -106,8 +122,8 @@ try {
 
       const origin = new URL(src).origin;
       let frame = null;
-      for (let i = 0; i < 60 && !frame; i++) {
-        frame = page.frames().find((fr) => fr.url().startsWith(origin));
+      for (let j = 0; j < 60 && !frame; j++) {
+        frame = leagueFrame(origin);
         if (!frame) await page.waitForTimeout(1000);
       }
 
@@ -115,7 +131,7 @@ try {
         entry.notes.push("league frame not found");
       } else {
         let verdict = "unknown";
-        for (let i = 0; i < 90; i++) {
+        for (let j = 0; j < 90; j++) {
           const body = await frame.locator("body").innerText().catch(() => "");
           if (/Sign in required/i.test(body)) {
             verdict = "sign-in-required";
@@ -134,7 +150,7 @@ try {
         }
         entry.verdict = verdict;
         if (verdict === "sign-in-required") entry.notes.push("handoff rejected");
-        if (verdict === "unknown") entry.notes.push("no dashboard/modal detected");
+        if (verdict === "unknown") entry.notes.push("no dashboard detected");
         entry.ok = verdict.startsWith("dashboard:") && entry.notes.length === 0;
       }
 
