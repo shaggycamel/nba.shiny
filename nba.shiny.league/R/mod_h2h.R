@@ -20,15 +20,17 @@ mod_h2h_ui <- function(id) {
           col_widths = c(8, 4)
         ),
         actionButton(ns("alter_team"), "Alter Team"),
-        reactableOutput(ns("alter_team_table")),
+        shinycssloaders::withSpinner(reactableOutput(ns("alter_team_table")), type = 1, color = "#133DEF"),
         actionButton(ns("snapshot_config"), "📸 Take Snapshot"),
-        reactableOutput(ns("snapshot_table"))
+        shinycssloaders::withSpinner(reactableOutput(ns("snapshot_table")), type = 1, color = "#133DEF")
       ),
       card(
         height = 1400,
         fill = FALSE,
-        card(full_screen = TRUE, min_height = 500, max_height = 700, d3Output(ns("stat_plot"))),
-        card(full_screen = TRUE, min_height = 200, max_height = 650, reactableOutput(ns("game_table")))
+        card(full_screen = TRUE, height = 700,
+             shinycssloaders::withSpinner(d3Output(ns("stat_plot"), height = "100%"), type = 1, color = "#133DEF")),
+        card(full_screen = TRUE, min_height = 200, max_height = 650,
+             shinycssloaders::withSpinner(reactableOutput(ns("game_table")), type = 1, color = "#133DEF"))
       ),
       fillable = TRUE,
       tags$style(

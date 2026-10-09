@@ -5,6 +5,8 @@
 #' @import shiny
 #' @noRd
 app_server <- function(input, output, session) {
+  options(spinner.type = 1, spinner.color = "#133DEF")
+
   #
   # ------- Base reactives
   rv_carry_thru <- reactiveValues(fty_parameters_met = FALSE)
@@ -26,7 +28,6 @@ app_server <- function(input, output, session) {
     if (!is.null(handoff) && is.null(isolate(rv_carry_thru$handoff_active))) {
       seed_handoff(rv_carry_thru, handoff)
       removeModal()
-      shinyjs::hide("fty_league_competitor_switch")
     }
   })
 
@@ -39,8 +40,15 @@ app_server <- function(input, output, session) {
     rv_snapshot_log,
     rv_snapshot_trigger
   )
-  observe(rv_switch_league_trigger(isolate(rv_switch_league_trigger()) + 1L)) |>
-    bindEvent(input$fty_league_competitor_switch)
+  # Embedded: ask the entry point to reopen its league chooser. Standalone: fall
+  # back to the in-app switch modal.
+  observeEvent(input$fty_league_competitor_switch, {
+    if (isTRUE(rv_carry_thru$handoff_active)) {
+      shinyjs::runjs("nbaChooseLeague();")
+    } else {
+      rv_switch_league_trigger(isolate(rv_switch_league_trigger()) + 1L)
+    }
+  })
 
   # Update dashboard title with selected league and player
   output$navbar_title <- renderUI({

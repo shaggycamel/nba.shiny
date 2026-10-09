@@ -10,6 +10,16 @@ app_ui <- function(request) {
   tagList(
     golem_add_external_resources(),
     useShinyjs(),
+    tags$head(tags$style(HTML(
+      "/* Let d3 outputs fill their fillable card even when wrapped by {shinycssloaders}. */
+       .card-body > .shiny-spinner-output-container {
+         flex: 1 1 auto; min-height: 0;
+         display: flex; flex-direction: column;
+       }
+       .shiny-spinner-output-container > .r2d3 {
+         flex: 1 1 auto; min-height: 0;
+       }"
+    ))),
     page_navbar(
       id = "title_container",
       window_title = "NBA Fantasy",
@@ -23,7 +33,8 @@ app_ui <- function(request) {
         "fty_league_competitor_switch",
         "League",
         icon = icon("right-from-bracket"),
-        width = "150px"
+        width = "150px",
+        style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
       )),
       theme = nba.shiny.core::nba_theme()
     )

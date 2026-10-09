@@ -13,9 +13,12 @@ an iframe with a signed, expiring URL. League containers run in strict mode
 required" instead of the dashboard. The signature is the app-level security
 boundary — Hugging Face does not enforce it.
 
-This test drives a real browser to confirm login → pick league → signed iframe →
-dashboard renders *as the mapped manager*, and that a bad/missing token is
-rejected.
+This test drives a real browser to confirm login → choose a league → signed
+iframe → dashboard renders *as the mapped manager* → switching to another league
+from the dashboard's own **League** button, and that a bad/missing token is
+rejected. The entry point has no persistent top bar: the customer chooses from a
+modal league switcher (the dashboard's button reopens the same switcher via
+`postMessage`).
 
 ## Run
 
@@ -43,30 +46,23 @@ E2E_EXPECT_COMPETITORS='{"ESPN:123456":"7"}' \
 
 ## Implementation notes (gotchas)
 
-- The league picker is a **selectize** control: the native `select#league` is
-  `display:none`, so Playwright's `selectOption` does not work. Set the value via
-  `select#league.selectize.setValue(value, false)`.
+- The league chooser is a **selectize** control in the entry's modal: the native
+  `select#league_choice` is `display:none`, so Playwright's `selectOption` does
+  not work. Set the value via
+  `select#league_choice.selectize.setValue(value, false)`, then click
+  `#league_choose_confirm`.
 - selectize may remove non-selected options from the native `<select>`; read the
   offered leagues from `selectize.options`, not from the `<select>` DOM.
-- The `<iframe>` element is reused across league switches — wait for its `src` to
-  contain both `sig=` and `league_id=<id>` before reading it.
+- The entry renders a single `iframe#league_frame`; its `src` is replaced on every
+  switch — wait for it to contain both `sig=` and `league_id=<id>` before reading
+  it.
+- Switching leagues again uses the dashboard's own `#fty_league_competitor_switch`
+  button (inside the league frame), which asks the entry to reopen the chooser via
+  `postMessage`.
 - Cross-origin frames are readable by Playwright; pick the frame whose URL starts
   with the league Space origin.
 - Success signal inside the league frame: a navbar title of the form
   `"<league> - <competitor>"`. Failure signal: the body contains
   `"Sign in required"`.
 
-## Known open issue
-
-A run against a test customer whose `fty.customer_league` had **four** 2025-26
-leagues showed only **one** in the entry picker, while
-`nba.shiny.entry::get_customer_leagues()` returned four when run inside the entry
-image against the nuc's credentials INI. Hypotheses to resolve:
-
-1. selectize hiding non-selected options from the native `<select>` (benign — the
-   harness now reads `selectize.options`, so re-running may just show all four).
-2. The entry Space's `NBA_DB_*` secrets pointing at a different database/schema
-   than the deploy host's INI, where the customer has only one mapping.
-
-Re-run and inspect `leagues offered:` in the output to distinguish the two before
-changing any config. See `docs/NUC_DEPLOY.md` for Space secrets/variables.
+See `docs/NUC_DEPLOY.md` for Space secrets/variables.

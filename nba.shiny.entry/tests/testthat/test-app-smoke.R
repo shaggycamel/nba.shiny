@@ -1,6 +1,6 @@
 # End-to-end smoke test: boots the entry-point server against the local
-# postgres, logs in (dev mode), lists the customer's leagues and builds a signed
-# iframe URL. Skips when no local database is reachable.
+# postgres, logs in (dev mode), chooses a league and builds a signed iframe URL.
+# Skips when no local database is reachable.
 
 local_db_up <- function() {
   con <- tryCatch(nba.shiny.core::db_connect("postgres"), error = function(e) NULL)
@@ -43,7 +43,9 @@ test_that("entry app boots, logs in and builds a signed iframe", {
         df <- leagues()
         expect_gt(nrow(df), 0L)
 
-        session$setInputs(league = "ESPN:95537", competitor = 1)
+        # A customer with several leagues chooses one from the switcher.
+        session$setInputs(league_choice = "ESPN:95537")
+        session$setInputs(league_choose_confirm = 1)
 
         html <- paste(as.character(output$iframe), collapse = "")
         expect_match(html, "hf.space")

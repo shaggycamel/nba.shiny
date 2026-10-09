@@ -2,59 +2,57 @@
 #'
 #' @noRd
 app_ui <- function(request) {
+  www <- system.file("app/www", package = "nba.shiny.entry")
+  if (nzchar(www)) {
+    shiny::addResourcePath("www", www)
+  }
+
   bslib::page_fluid(
     theme = nba_theme(),
     tags$head(
+      tags$link(rel = "icon", type = "image/x-icon", href = "www/favicon.ico"),
       tags$style(HTML(
         "html, body { height: 100%; }
          .container-fluid { height: 100%; padding: 0 !important; }
          #app { height: 100%; }
 
-         /* Full-bleed shell: a header/toolbar that keeps its height and a
-            frame that owns the rest of the viewport. */
-         .app-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-         .app-shell-toolbar { flex: 0 0 auto; }
-         .app-shell-frame { flex: 1 1 auto; min-height: 0; position: relative; }
+         /* Full-bleed frame that owns the whole viewport. */
+         .app-shell { height: 100%; min-height: 0; }
+         .app-shell-frame { height: 100%; min-height: 0; position: relative; }
          .app-shell-frame iframe {
            position: absolute; inset: 0; width: 100%; height: 100%;
            border: 0; display: block;
          }
-
-         /* Shown until the embedded dashboard fires its load event. */
-         .app-frame-loading {
-           position: absolute; inset: 0; z-index: 3;
-           display: flex; flex-direction: column; align-items: center;
-           justify-content: center; gap: .25rem;
-           background: var(--bs-body-bg, #fff);
-           color: var(--bs-secondary-color, #6c757d);
-         }
          .app-frame-empty {
-           position: absolute; inset: 0;
-           display: flex; align-items: center; justify-content: center;
-           color: var(--bs-secondary-color, #6c757d);
+           height: 100%; display: flex; align-items: center;
+           justify-content: center; color: var(--bs-secondary-color, #6c757d);
          }
 
-         .app-login {
-           height: 100%; min-height: 100%;
-           display: flex; align-items: center; justify-content: center;
-           padding: 1rem;
-         }"
+         .selectize-dropdown-content { min-width: 100%; box-sizing: border-box; }
+
+         /* Selected/active league in the switcher: a lighter shade of the button blue. */
+         .selectize-dropdown .option.active,
+         .selectize-dropdown .option.selected {
+           background-color: #cfe2f3; color: #1f4e79;
+         }
+
+         /* Login modal: blue title bar matching the button. */
+         .modal-dialog:has(.login-fields) .modal-content { overflow: hidden; }
+         .modal-dialog:has(.login-fields) .modal-header {
+           background-color: #337AB7; border-bottom: 0;
+         }
+         .modal-dialog:has(.login-fields) .modal-header .modal-title { color: #FFF; }
+
+         /* Larger text in the password field. */
+         #password { font-size: 1.3rem; }"
       )),
       tags$script(HTML(
-        "window.addEventListener('load', function () {
-           if (!window.Shiny) return;
-           Shiny.addCustomMessageHandler('login-busy', function (busy) {
-             var b = document.getElementById('login');
-             if (!b) return;
-             if (busy) {
-               if (!b.dataset.idleLabel) b.dataset.idleLabel = b.innerHTML;
-               b.disabled = true;
-               b.innerHTML = '<span class=\"spinner-border spinner-border-sm me-2\" role=\"status\" aria-hidden=\"true\"></span>Signing in...';
-             } else {
-               b.disabled = false;
-               if (b.dataset.idleLabel) b.innerHTML = b.dataset.idleLabel;
-             }
-           });
+        "window.addEventListener('message', function (e) {
+           var d = e.data || {};
+           if (d.type !== 'nba:choose') return;
+           var allowed = window.NBA_ALLOWED_ORIGINS || [];
+           if (allowed.indexOf(e.origin) === -1) return;
+           if (window.Shiny) Shiny.setInputValue('nba_choose', Date.now(), {priority: 'event'});
          });
          document.addEventListener('keydown', function (e) {
            if (e.key === 'Enter' && e.target && e.target.id === 'password') {
@@ -68,49 +66,80 @@ app_ui <- function(request) {
   )
 }
 
+#' Login modal, styled to match the league dashboard's switch modal
+#'
 #' @noRd
-login_ui <- function() {
-  tags$div(
-    class = "app-login",
-    bslib::card(
-      class = "shadow-sm",
-      style = "width: 100%; max-width: 380px;",
-      bslib::card_body(
-        tags$form(
-          onsubmit = "return false;",
-          tags$h3(class = "mb-1", "NBA Shiny"),
-          tags$p(class = "text-muted", "Sign in to your fantasy dashboard"),
-          shiny::textInput("email", "Email", placeholder = "you@example.com"),
-          shiny::passwordInput("password", "Password"),
-          shiny::actionButton("login", "Sign in", class = "btn-primary w-100"),
-          tags$div(class = "text-danger small mt-2", textOutput("login_message"))
-        )
+login_modal <- function() {
+  modalDialog(
+    title = "NBA Shiny",
+    tags$div(
+      class = "login-fields",
+      shiny::textInput("email", "Email", placeholder = "you@example.com", width = "100%"),
+      shiny::passwordInput("password", "Password", width = "100%"),
+      span(textOutput("login_message"), style = "color:red")
+    ),
+    footer = tagList(
+      actionButton(
+        "login",
+        "Kobeee",
+        style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
       )
-    )
+    ),
+    size = "m",
+    easyClose = FALSE
   )
 }
 
+#' League chooser modal, matching the league dashboard's switch modal
+#'
 #' @noRd
-shell_ui <- function(name, leagues) {
+league_chooser_modal <- function(leagues, current = NULL) {
   choices <- stats::setNames(
     paste(leagues$platform, leagues$league_id, sep = ":"),
     leagues$league_name
   )
 
+  selected <- if (!is.null(current) && current %in% choices) current else ""
+
+  options <- list(placeholder = "Select Fantasy League")
+  if (!nzchar(selected)) {
+    # No active league yet: show the placeholder rather than the first option.
+    options$onInitialize <- I("function(){this.setValue('');}")
+  }
+
+  modalDialog(
+    selectizeInput(
+      "league_choice",
+      label = NULL,
+      choices = choices,
+      selected = selected,
+      options = options,
+      width = "100%"
+    ),
+    span(textOutput("league_choice_message"), style = "color:red"),
+    footer = tagList(
+      actionButton(
+        "league_choose_confirm",
+        "Kobeee!",
+        style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
+      )
+    ),
+    size = "m",
+    easyClose = TRUE
+  )
+}
+
+#' @noRd
+shell_ui <- function(leagues) {
+  origins <- entry_allowed_origins(leagues)
+
   tagList(
+    tags$script(HTML(sprintf(
+      "window.NBA_ALLOWED_ORIGINS = %s;",
+      jsonlite::toJSON(origins, auto_unbox = FALSE)
+    ))),
     tags$div(
       class = "app-shell",
-      tags$div(
-        class = "app-shell-toolbar d-flex flex-wrap align-items-center gap-3 px-3 py-2 border-bottom",
-        tags$strong(class = "me-auto", name),
-        tags$div(
-          class = "d-flex align-items-center gap-2",
-          tags$label(`for` = "league", class = "visually-hidden", "League"),
-          shiny::selectInput("league", label = NULL, choices = choices, width = "240px")
-        ),
-        uiOutput("competitor_ui"),
-        shiny::actionButton("signout", "Sign out", class = "btn-sm btn-outline-secondary")
-      ),
       tags$div(
         class = "app-shell-frame",
         uiOutput("iframe")

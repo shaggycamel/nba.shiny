@@ -16,7 +16,7 @@ mod_schedule_table_ui <- function(id) {
         radioButtons(ns("pin_dir"), label = "Pin Direction", choices = c("-", "+"), selected = "+", inline = TRUE),
         actionButton(ns("copy_teams"), "Copy teams to Comparison")
       ),
-      card(full_screen = TRUE, reactableOutput(ns("schedule_table"))),
+      card(full_screen = TRUE, shinycssloaders::withSpinner(reactableOutput(ns("schedule_table")), type = 1, color = "#133DEF")),
       fillable = TRUE
     ),
   )

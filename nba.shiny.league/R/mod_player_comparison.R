@@ -41,7 +41,7 @@ mod_player_comparison_ui <- function(id) {
           size = "small"
         )
       ),
-      card(full_screen = TRUE, reactableOutput(ns("comparison_table"))),
+      card(full_screen = TRUE, shinycssloaders::withSpinner(reactableOutput(ns("comparison_table")), type = 1, color = "#133DEF")),
       fillable = TRUE
     )
   )

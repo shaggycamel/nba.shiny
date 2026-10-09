@@ -264,3 +264,24 @@ parse_league_value <- function(value) {
   parts <- strsplit(value, ":", fixed = TRUE)[[1]]
   list(platform = parts[[1]], league_id = as.integer(parts[[2]]))
 }
+
+#' Browser origins of a customer's league containers
+#'
+#' The embedded dashboards post requests back to the entry point, which accepts
+#' them only from the container origins it actually embeds.
+#'
+#' @param leagues Result of [get_customer_leagues()].
+#' @return A character vector of origins.
+#' @noRd
+entry_allowed_origins <- function(leagues) {
+  if (nrow(leagues) == 0L) {
+    return(character(0))
+  }
+
+  urls <- ifelse(
+    !is.na(leagues$container_url) & nzchar(leagues$container_url),
+    leagues$container_url,
+    league_space_url(leagues$platform, leagues$league_id)
+  )
+  unique(sub("/+$", "", urls))
+}

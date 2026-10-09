@@ -15,6 +15,23 @@ test_that("league_space_url follows the deploy naming convention", {
   )
 })
 
+test_that("entry_allowed_origins derives container origins", {
+  leagues <- data.frame(
+    platform = c("ESPN", "ESPN"),
+    league_id = c("1", "2"),
+    league_name = c("A", "B"),
+    competitor_id = c(NA_character_, NA_character_),
+    slug = c(NA_character_, NA_character_),
+    container_url = c(NA_character_, "https://example.test/"),
+    stringsAsFactors = FALSE
+  )
+
+  origins <- entry_allowed_origins(leagues)
+  expect_true("https://shaggycamel-nba-shiny-espn-1.hf.space" %in% origins)
+  expect_true("https://example.test" %in% origins)
+  expect_equal(entry_allowed_origins(leagues[0, ]), character(0))
+})
+
 test_that("league_iframe_url carries a verifiable handoff token", {
   old <- Sys.getenv("NBA_HANDOFF_SECRET", unset = NA)
   Sys.setenv(NBA_HANDOFF_SECRET = "test-secret")
