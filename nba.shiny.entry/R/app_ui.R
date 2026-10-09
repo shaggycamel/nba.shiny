@@ -2,9 +2,15 @@
 #'
 #' @noRd
 app_ui <- function(request) {
+  www <- system.file("app/www", package = "nba.shiny.entry")
+  if (nzchar(www)) {
+    shiny::addResourcePath("www", www)
+  }
+
   bslib::page_fluid(
     theme = nba_theme(),
     tags$head(
+      tags$link(rel = "icon", type = "image/x-icon", href = "www/favicon.ico"),
       tags$style(HTML(
         "html, body { height: 100%; }
          .container-fluid { height: 100%; padding: 0 !important; }
