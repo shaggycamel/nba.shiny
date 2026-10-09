@@ -22,8 +22,8 @@ mod_league_overview_ui <- function(id) {
       card(
         height = 1250,
         fill = FALSE,
-        card(full_screen = TRUE, min_height = 500, max_height = 600,
-             shinycssloaders::withSpinner(r2d3::d3Output(ns("fty_lo_plt")), type = 1, color = "#133DEF")),
+        card(full_screen = TRUE, height = 600,
+             shinycssloaders::withSpinner(r2d3::d3Output(ns("fty_lo_plt"), height = "100%"), type = 1, color = "#133DEF")),
         card(full_screen = TRUE, min_height = 200, max_height = 650,
              shinycssloaders::withSpinner(reactableOutput(ns("tbl_recent_activity")), type = 1, color = "#133DEF"))
       )

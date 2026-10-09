@@ -588,3 +588,6 @@ r2d3.onRender(function(data, svg, width, height, options) {
     }
   });
 });
+r2d3.onResize(function(width, height) {
+  r2d3.svg.dispatch("render");
+});

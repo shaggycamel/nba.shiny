@@ -47,6 +47,14 @@ app_server <- function(input, output, session) {
     get_customer_leagues(con, rv$customer_id, season)
   })
 
+  current_league_value <- reactive({
+    if (is.null(rv$current_league)) {
+      NULL
+    } else {
+      paste(rv$current_league$platform, rv$current_league$league_id, sep = ":")
+    }
+  })
+
   # After login: a single league is loaded straight away, otherwise the customer
   # chooses from the switcher.
   observeEvent(rv$customer_id, {
@@ -58,14 +66,14 @@ app_server <- function(input, output, session) {
         league_id = as.integer(df$league_id[[1]])
       )
     } else if (nrow(df) > 1L) {
-      showModal(league_chooser_modal(df))
+      showModal(league_chooser_modal(df, current_league_value()))
     }
   })
 
   # The dashboard's "League" button asks the entry to reopen the chooser.
   observeEvent(input$nba_choose, {
     req(rv$customer_id)
-    showModal(league_chooser_modal(leagues()))
+    showModal(league_chooser_modal(leagues(), current_league_value()))
   })
 
   observeEvent(input$league_choose_confirm, {
