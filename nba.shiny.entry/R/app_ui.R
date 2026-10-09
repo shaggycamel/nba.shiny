@@ -41,7 +41,10 @@ app_ui <- function(request) {
          .modal-dialog:has(.login-fields) .modal-header {
            background-color: #337AB7; border-bottom: 0;
          }
-         .modal-dialog:has(.login-fields) .modal-header .modal-title { color: #FFF; }"
+         .modal-dialog:has(.login-fields) .modal-header .modal-title { color: #FFF; }
+
+         /* Larger text in the password field. */
+         #password { font-size: 1.3rem; }"
       )),
       tags$script(HTML(
         "window.addEventListener('message', function (e) {
