@@ -70,16 +70,16 @@ remote, `git pull` will not include them — do not proceed on stale code. Confi
 
 ## 4. Values
 
-Owner defaults to `shaggycamel`; Space prefix is `scs-nba-fty-league`; image prefix is
+Owner defaults to `shaggycamel`; Space prefix is empty; image prefix is
 `nba.shiny-`.
 
 | Purpose | HF Space | URL |
 |--------|----------|-----|
-| Entry point | `shaggycamel/scs-nba-fty-league-entry` | `https://shaggycamel-scs-nba-fty-league-entry.hf.space` |
-| League ESPN 95537 | `shaggycamel/scs-nba-fty-league-espn-95537` | `https://shaggycamel-scs-nba-fty-league-espn-95537.hf.space` |
-| League ESPN 1382487116 | `shaggycamel/scs-nba-fty-league-espn-1382487116` | `…-espn-1382487116.hf.space` |
-| League ESPN 1966813226 | `shaggycamel/scs-nba-fty-league-espn-1966813226` | `…-espn-1966813226.hf.space` |
-| League ESPN 24608 | `shaggycamel/scs-nba-fty-league-espn-24608` | `…-espn-24608.hf.space` |
+| Entry point | `shaggycamel/entry` | `https://shaggycamel-entry.hf.space` |
+| League ESPN 95537 | `shaggycamel/espn-95537` | `https://shaggycamel-espn-95537.hf.space` |
+| League ESPN 1382487116 | `shaggycamel/espn-1382487116` | `…-espn-1382487116.hf.space` |
+| League ESPN 1966813226 | `shaggycamel/espn-1966813226` | `…-espn-1966813226.hf.space` |
+| League ESPN 24608 | `shaggycamel/espn-24608` | `…-espn-24608.hf.space` |
 
 Docker images: `shaggycamel/nba.shiny-espn-<league_id>:latest`; entry
 `shaggycamel/nba.shiny.entry:latest`. Base image: `nba.shiny_base:latest`.
@@ -136,11 +136,11 @@ SECRET="<the sha256 hex you generated>"
 
 # per Space repo id (entry + each league)
 for REPO in \
-  shaggycamel/scs-nba-fty-league-entry \
-  shaggycamel/scs-nba-fty-league-espn-95537 \
-  shaggycamel/scs-nba-fty-league-espn-1382487116 \
-  shaggycamel/scs-nba-fty-league-espn-1966813226 \
-  shaggycamel/scs-nba-fty-league-espn-24608
+  shaggycamel/entry \
+  shaggycamel/espn-95537 \
+  shaggycamel/espn-1382487116 \
+  shaggycamel/espn-1966813226 \
+  shaggycamel/espn-24608
 do
   curl -sf -X POST "https://huggingface.co/api/spaces/$REPO/secrets" \
     -H "Authorization: Bearer $HF" -H "Content-Type: application/json" \
@@ -160,7 +160,7 @@ Additionally, on **league** Spaces only, set strict mode so a container refuses 
 run without a valid entry token:
 
 ```bash
-curl -sf -X POST "https://huggingface.co/api/spaces/shaggycamel/scs-nba-fty-league-espn-95537/variables" \
+curl -sf -X POST "https://huggingface.co/api/spaces/shaggycamel/espn-95537/variables" \
   -H "Authorization: Bearer $HF" -H "Content-Type: application/json" \
   -d '{"key":"NBA_REQUIRE_HANDOFF","value":"1"}'
 # repeat for the other league Spaces
@@ -187,11 +187,11 @@ not versioned).
 
 ```bash
 # entry point serves a login page
-curl -fsS -o /dev/null -w '%{http_code}\n' https://shaggycamel-scs-nba-fty-league-entry.hf.space/
+curl -fsS -o /dev/null -w '%{http_code}\n' https://shaggycamel-entry.hf.space/
 
 # each league Space is up (will show the "Sign in required" modal when
 # NBA_REQUIRE_HANDOFF=1 and no token is present — that is correct)
-curl -fsS -o /dev/null -w '%{http_code}\n' https://shaggycamel-scs-nba-fty-league-espn-95537.hf.space/
+curl -fsS -o /dev/null -w '%{http_code}\n' https://shaggycamel-espn-95537.hf.space/
 ```
 
 Then, in a browser: open the entry URL → log in → pick a league → the league

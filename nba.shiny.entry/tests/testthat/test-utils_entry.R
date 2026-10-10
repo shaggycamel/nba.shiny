@@ -10,8 +10,8 @@ test_that("parse_league_value splits platform and id", {
 
 test_that("league_space_url follows the deploy naming convention", {
   expect_equal(
-    league_space_url("ESPN", 95537, owner = "shaggycamel", prefix = "scs-nba-fty-league"),
-    "https://shaggycamel-scs-nba-fty-league-espn-95537.hf.space"
+    league_space_url("ESPN", 95537, owner = "shaggycamel", prefix = ""),
+    "https://shaggycamel-espn-95537.hf.space"
   )
 })
 
@@ -27,7 +27,7 @@ test_that("entry_allowed_origins derives container origins", {
   )
 
   origins <- entry_allowed_origins(leagues)
-  expect_true("https://shaggycamel-scs-nba-fty-league-espn-1.hf.space" %in% origins)
+  expect_true("https://shaggycamel-espn-1.hf.space" %in% origins)
   expect_true("https://example.test" %in% origins)
   expect_equal(entry_allowed_origins(leagues[0, ]), character(0))
 })

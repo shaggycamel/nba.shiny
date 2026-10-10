@@ -1,18 +1,18 @@
 #!/bin/bash
 # Hugging Face Spaces deploy adapter -----------------------------------------
-# League container naming: <owner>/scs-nba-fty-league-<slug> served at
-# https://<owner>-scs-nba-fty-league-<slug>.hf.space (embed the .hf.space URL).
+# League container naming: <owner>/<slug> served at
+# https://<owner>-<slug>.hf.space (embed the .hf.space URL).
 # Requires HUGGINGFACE_TOKEN unless DRY_RUN=1.
 
 : "${HF_OWNER:=shaggycamel}"
 : "${HF_IMAGE_BASENAME:=scs.nba.fty.league_dash}"
 
 hf_space_id() {
-  echo "${HF_OWNER}/scs-nba-fty-league-${1}"
+  echo "${HF_OWNER}/${1}"
 }
 
 adapter_url() {
-  echo "https://${HF_OWNER}-scs-nba-fty-league-${1}.hf.space"
+  echo "https://${HF_OWNER}-${1}.hf.space"
 }
 
 # Create and configure the Space if needed. Idempotent: creates a missing Space,
@@ -21,7 +21,7 @@ adapter_provision() {
   local slug="$1"
   local image="$2"
   local app="${3:-nba.shiny.league}"
-  local name="scs-nba-fty-league-${slug}"
+  local name="${slug}"
   local repo="${HF_OWNER}/${name}"
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
