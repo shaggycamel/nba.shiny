@@ -20,7 +20,7 @@ adapter_url() {
 adapter_provision() {
   local slug="$1"
   local image="$2"
-  local app="${3:-nba.shiny.league}"
+  local app="${3:-league}"
   local name="${slug}"
   local repo="${HF_OWNER}/${name}"
 

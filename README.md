@@ -1,6 +1,6 @@
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# `{nba.shiny}`
+# `{scs.nba.fty.league_dash}`
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -13,9 +13,9 @@ packages plus the container/deploy pipeline.
 
 ## Repository layout
 
-- `nba.shiny.league/` — the **league dashboard** package (the Shiny app).
-- `nba.shiny.entry/` — the **entry point**: auth → league picker → signed iframe.
-- `nba.shiny.core/` — shared theme, database access, password hashing and
+- `league/` — the **league dashboard** package (the Shiny app).
+- `entry/` — the **entry point**: auth → league picker → signed iframe.
+- `core/` — shared theme, database access, password hashing and
   handoff tokens.
 - `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
   pipeline (`cron.sh` is the single deploy entry point).
@@ -26,8 +26,8 @@ packages plus the container/deploy pipeline.
 
 ```r
 renv::restore()
-devtools::load_all("nba.shiny.league")
-nba.shiny.league::run_app()
+devtools::load_all("league")
+league::run_app()
 ```
 
 ## Deploy
@@ -38,9 +38,9 @@ Builds and deploys run from the repo root. See
 ## Tests
 
 ```r
-devtools::test("nba.shiny.league")
-devtools::test("nba.shiny.core")
-devtools::test("nba.shiny.entry")
+devtools::test("league")
+devtools::test("core")
+devtools::test("entry")
 ```
 
 Browser end-to-end (entry login → signed iframe → league dashboard) lives in

@@ -1,0 +1,47 @@
+Package: league
+Title: NBA Shiny League
+Version: 0.0.0.9000
+Authors@R: 
+    person("Oliver", "Eaton", , "eat_fred@protonmail.com", role = c("aut", "cre"))
+Description: A Shiny application for NBA Fantasy
+License: MIT + file LICENSE
+Depends: 
+    R (>= 3.5)
+Imports: 
+    bslib,
+    config,
+    DBI,
+    dplyr,
+    forcats,
+    ggplot2,
+    glue,
+    golem,
+    htmltools,
+    ini,
+    later,
+    lubridate,
+    core,
+    plotly,
+    purrr,
+    r2d3,
+    reactable,
+    rlang,
+    RPostgres,
+    scales,
+    shiny,
+    shinycssloaders,
+    shinyjs,
+    shinyWidgets,
+    stringr,
+    tibble,
+    tidyr,
+    tidyselect
+Suggests: 
+    spelling,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en-US
+LazyData: true
+Config/roxygen2/version: 8.0.0

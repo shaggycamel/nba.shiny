@@ -9,10 +9,10 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 
 ## 1. Context
 
-- Repo: `nba.shiny` (monorepo; the league dashboard is the `nba.shiny.league/`
+- Repo: `scs.nba.fty.league_dash` (monorepo; the league dashboard is the `league/`
   package, which holds `data-raw/` and is built from its own directory).
-- Sibling packages: `nba.shiny.core/` (shared theme/db/token/password) and
-  `nba.shiny.entry/` (the **entry point**: auth → league picker → signed iframe).
+- Sibling packages: `core/` (shared theme/db/token/password) and
+  `entry/` (the **entry point**: auth → league picker → signed iframe).
 - Containers are built from Docker images and deployed as **one HF Space per league**
   plus a single **entry Space**. League containers bake their data at build time;
   the entry point reads customer/league data from CockroachDB at runtime.
@@ -24,7 +24,7 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 
 - Docker is running and can reach Docker Hub.
 - **No host R/renv is needed.** All R steps (data generation, `R CMD build`, league
-  listing) run inside the `nba.shiny_base:latest` image, which carries the restored
+  listing) run inside the `scs.nba.fty.league_dash_base:latest` image, which carries the restored
   library. (The host must have Docker; R is used via `docker run`.)
 - Credentials INI exists: `~/.config/scs_hub_credentials.ini` with a
   `cockroach-read` section (and `postgres` for local). Generation defaults to
@@ -39,18 +39,18 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 
   Create it once (git-ignored, never commit):
   ```bash
-  cat > ~/github/nba.shiny/.profile <<'EOF'
+  cat > ~/shaggy_camel_sports/nba/fty/league_dash/.profile <<'EOF'
   export DOCKERHUB_USER=shaggycamel
   export DOCKERHUB_TOKEN=...
   export HUGGINGFACE_TOKEN=...
   EOF
-  chmod 600 ~/github/nba.shiny/.profile
+  chmod 600 ~/shaggy_camel_sports/nba/fty/league_dash/.profile
   ```
 
 Preflight:
 
 ```bash
-cd ~/github/nba.shiny
+cd ~/shaggy_camel_sports/nba/fty/league_dash
 git pull                      # MUST be up to date; see §3
 docker info >/dev/null && echo docker-ok
 test -f ~/.config/scs_hub_credentials.ini && echo ini-ok
@@ -71,7 +71,7 @@ remote, `git pull` will not include them — do not proceed on stale code. Confi
 ## 4. Values
 
 Owner defaults to `shaggycamel`; Space prefix is empty; image prefix is
-`nba.shiny-`.
+`scs.nba.fty.league_dash-`.
 
 | Purpose | HF Space | URL |
 |--------|----------|-----|
@@ -81,8 +81,8 @@ Owner defaults to `shaggycamel`; Space prefix is empty; image prefix is
 | League ESPN 1966813226 | `shaggycamel/espn-1966813226` | `…-espn-1966813226.hf.space` |
 | League ESPN 24608 | `shaggycamel/espn-24608` | `…-espn-24608.hf.space` |
 
-Docker images: `shaggycamel/nba.shiny-espn-<league_id>:latest`; entry
-`shaggycamel/nba.shiny.entry:latest`. Base image: `nba.shiny_base:latest`.
+Docker images: `shaggycamel/scs.nba.fty.league_dash-espn-<league_id>:latest`; entry
+`shaggycamel/scs.nba.fty.league_dash_entry:latest`. Base image: `scs.nba.fty.league_dash_base:latest`.
 
 `NBA_HANDOFF_SECRET` is an arbitrary shared HMAC key (no default). Generate once
 and use the **same** value on the entry Space and every league Space:
@@ -109,12 +109,12 @@ PROVISION=1 BUILD_ENTRY=1 bash cron.sh
 ```
 
 `cron.sh` does, in order:
-1. Base image `nba.shiny_base:latest` (slow; skipped if it exists unless `REBUILD_BASE=1`)
-   and verifies `nba.shiny.core` loads in it.
+1. Base image `scs.nba.fty.league_dash_base:latest` (slow; skipped if it exists unless `REBUILD_BASE=1`)
+   and verifies `core` loads in it.
 2. Generates the shared NBA base once, then per league generates data, builds the
-   tarball, builds/pushes `shaggycamel/nba.shiny-<slug>:latest`, and deploys.
+   tarball, builds/pushes `shaggycamel/scs.nba.fty.league_dash-<slug>:latest`, and deploys.
    Failures are reported per league; the loop continues.
-3. `build_entry.sh` — builds/pushes/deploys `shaggycamel/nba.shiny.entry:latest` —
+3. `build_entry.sh` — builds/pushes/deploys `shaggycamel/scs.nba.fty.league_dash_entry:latest` —
    only when `BUILD_ENTRY=1` (rebuilding restarts the entry Space).
 
 Individual stages (if you need to isolate a failure):
@@ -175,7 +175,7 @@ the Space.
 Passwords are stored hashed in `fty.customer.password_hash`. Set one per customer:
 
 ```bash
-cd ~/github/nba.shiny
+cd ~/shaggy_camel_sports/nba/fty/league_dash
 NBA_DB_SECTION=cockroach-read NBA_SET_PASSWORD='<password>' \
   Rscript scripts/set_customer_password.R <customer_email>
 ```
@@ -199,12 +199,12 @@ dashboard should load inside the iframe, already scoped to that customer's manag
 
 ## 9. Troubleshooting
 
-- **Base build fails / `nba.shiny.core` missing**: check `renv.lock` includes
+- **Base build fails / `core` missing**: check `renv.lock` includes
   `openssl`, `digest`, `ini`, `bslib`, `DBI`, `RPostgres`. Rebuild with
   `REBUILD_BASE=1`.
 - **"no leagues found"**: `fty.league` has no rows for `NBA_SEASON`, or the
   credentials INI section is wrong. Debug inside the base image:
-  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work/nba.shiny.league nba.shiny_base:latest Rscript ./data-raw/_list_leagues.R`
+  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work/league scs.nba.fty.league_dash_base:latest Rscript ./data-raw/_list_leagues.R`
 - **HF restart returns non-2xx**: the Space does not exist (run with `PROVISION=1`)
   or `HUGGINGFACE_TOKEN` lacks write access.
 - **401/blank league dashboard**: `NBA_HANDOFF_SECRET` differs between entry and the

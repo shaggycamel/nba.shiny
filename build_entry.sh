@@ -63,7 +63,7 @@ fi
 
 if [ "$PROVISION" = "1" ]; then
   step "Provisioning entry point"
-  adapter_provision "$ENTRY_SLUG" "$FULL_IMAGE" "nba.shiny.entry" || fail "provision"
+  adapter_provision "$ENTRY_SLUG" "$FULL_IMAGE" "entry" || fail "provision"
 fi
 
 step "Deploying entry point (${ENTRY_SLUG})"

@@ -68,9 +68,9 @@ build_base() {
     step "Reusing base image ${BASE_IMAGE} (set REBUILD_BASE=1 to rebuild)"
   fi
 
-  step "Verifying nba.shiny.core in ${BASE_IMAGE}"
-  docker run --rm "$BASE_IMAGE" R -e 'library(nba.shiny.core); cat("nba.shiny.core ok\n")' >/dev/null \
-    || fail "nba.shiny.core missing from ${BASE_IMAGE}"
+  step "Verifying core in ${BASE_IMAGE}"
+  docker run --rm "$BASE_IMAGE" R -e 'library(core); cat("core ok\n")' >/dev/null \
+    || fail "core missing from ${BASE_IMAGE}"
 }
 
 # ── Run R inside the base image (host needs only Docker, not R/renv) ──────────
@@ -81,7 +81,7 @@ R_IMAGE="${R_IMAGE:-$BASE_IMAGE}"
 # config file on the host (dconf, systemd, Positron, ...). SCS_HUB_CREDENTIALS
 # still works as an override, matching what the R code itself resolves.
 CREDS_FILE="${CREDS_FILE:-${SCS_HUB_CREDENTIALS:-$HOME/.config/scs_hub_credentials.ini}}"
-PKG_DIR="${PKG_DIR:-nba.shiny.league}"
+PKG_DIR="${PKG_DIR:-league}"
 
 run_r() {
   # docker silently creates a *directory* at a missing bind path, which then shows
@@ -146,7 +146,7 @@ process_league() {
 
   if [ "$PROVISION" = "1" ]; then
     step "Provisioning ${slug}"
-    adapter_provision "$slug" "$image" "nba.shiny.league" || fail "provision"
+    adapter_provision "$slug" "$image" "league" || fail "provision"
   fi
 
   step "Deploying ${slug}"

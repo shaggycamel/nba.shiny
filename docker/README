@@ -5,14 +5,14 @@
 docker build -f docker/Dockerfile_base --progress=plain -t scs.nba.fty.league_dash_base:latest .
 
 # 2. Build the app tarball (from inside the league package), then the app image.
-( cd nba.shiny.league && R CMD build . )
+( cd league && R CMD build . )
 docker build -f docker/Dockerfile --progress=plain -t shaggycamel/scs.nba.fty.league_dash:latest .
 
 # 3. Run it.
 docker run -p 3838:3838 shaggycamel/scs.nba.fty.league_dash:latest
 # then go to 127.0.0.1:3838
 
-# 4. Build and run the entry point image (nba.shiny.core comes from the base).
+# 4. Build and run the entry point image (core comes from the base).
 docker build -f docker/Dockerfile_entry --progress=plain -t shaggycamel/scs.nba.fty.league_dash_entry:latest .
 docker run -p 3839:3838 shaggycamel/scs.nba.fty.league_dash_entry:latest
 # then go to 127.0.0.1:3839
