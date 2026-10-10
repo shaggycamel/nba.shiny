@@ -216,6 +216,8 @@ dfs_fty_standings <-
     }
 
     df_standings |>
+      # bigint columns arrive as integer64; reactable needs plain numerics.
+      mutate(across(any_of(c("wins", "losses", "ties", "points_for", "points_against")), as.numeric)) |>
       mutate(pct = (wins + 0.5 * ties) / (wins + losses + ties)) |>
       arrange(desc(wins), losses, desc(pct)) |>
       mutate(rank = row_number()) |>
