@@ -12,17 +12,26 @@
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-# If executing from cron source .profile (containing tokens)
-if [ ! -t 1 ] && [ -f ./.profile ]; then
-  # shellcheck source=/dev/null
-  source ./.profile
-fi
-
 set -uo pipefail
 
 # Work from the repo root regardless of the invoking cwd
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
 cd "$REPO_DIR" || exit 1
+
+# Deploy secrets (DOCKERHUB_TOKEN, HUGGINGFACE_TOKEN, ...). Resolved after the cd so
+# it is the repo's own file, not whatever $HOME happened to hold: the previous
+# version sourced ./.profile before cd-ing, so under cron (cwd=$HOME) it read
+# ~/.profile and ignored the repo copy entirely. A terminal means a human is
+# driving, so values they already exported win.
+if [ ! -t 1 ]; then
+  for f in ./.deploy.env ./.profile "$HOME/.config/scs_deploy.env"; do
+    if [ -f "$f" ]; then
+      # shellcheck source=/dev/null
+      . "$f"
+      break
+    fi
+  done
+fi
 
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
 IMAGE_NAME="nba.shiny"
