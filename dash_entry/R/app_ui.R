@@ -71,7 +71,7 @@ app_ui <- function(request) {
 #' @noRd
 login_modal <- function() {
   modalDialog(
-    title = "NBA Shiny",
+    title = "Shaggy Camel Sports",
     tags$div(
       class = "login-fields",
       shiny::textInput("email", "Email", placeholder = "you@example.com", width = "100%"),

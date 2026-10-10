@@ -36,12 +36,15 @@ devtools::test("dash_entry")
 ```
 
 Browser end-to-end (Playwright) needs live Spaces and credentials, so it is not
-part of the unit suite. See `e2e/README.md` for env vars and gotchas:
+part of the unit suite. Credentials live in `~/.config/scs_e2e.env`
+(`E2E_EMAIL` / `E2E_PASSWORD`), never in the repo. See `e2e/README.md` for env
+vars and gotchas:
 
 ```bash
 cd e2e
 npm install
-E2E_EMAIL='<test-customer-email>' E2E_PASSWORD='<password>' npm test
+set -a; source ~/.config/scs_e2e.env; set +a   # E2E_EMAIL / E2E_PASSWORD
+npm test
 ```
 
 ## Format
@@ -60,9 +63,18 @@ Full runbook: `docs/NUC_DEPLOY.md` (load on demand — do not preload).
 ## Conventions / gotchas
 
 - Never commit secrets. DB creds live in `~/.config/scs_hub_credentials.ini`;
-  tokens in `./.profile` (git-ignored).
+  tokens in `./.profile` (git-ignored); e2e creds in `~/.config/scs_e2e.env`.
 - Runtime config via env: `NBA_DB_SECTION`, `NBA_SEASON`, `NBA_HANDOFF_SECRET`,
   `NBA_REQUIRE_HANDOFF`.
 - Handoff security: `entry` signs an HMAC token; league containers verify it.
   `NBA_HANDOFF_SECRET` must be identical on the entry and every league Space.
+- `scripts/` is git-ignored. It holds `set_customer_password.R` (sets
+  `fty.customer.password_hash`); run from the repo root with `NBA_DB_SECTION`
+  selecting the DB (local `postgres`, hosted `cockroach-read`/`-write`).
+- Customer login: `core::verify_password` handles bcrypt / pbkdf2 / argon2. The
+  hosted entry authenticates against CockroachDB; local `postgres` can hold a
+  different hash, so a password set locally may not work on HF.
+- The `cockroach-read` user has `SELECT` on views and some tables but not all raw
+  tables (e.g. `fty.matchup_result` needed an explicit `GRANT`). Views/grants are
+  managed out-of-band in the sibling `database/` repo, not by this deploy.
 - Don't add code comments unless asked.
