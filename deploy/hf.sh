@@ -1,18 +1,18 @@
 #!/bin/bash
 # Hugging Face Spaces deploy adapter -----------------------------------------
-# League container naming: <owner>/nba-shiny-<slug> served at
-# https://<owner>-nba-shiny-<slug>.hf.space (embed the .hf.space URL).
+# League container naming: <owner>/scs-nba-fty-league-<slug> served at
+# https://<owner>-scs-nba-fty-league-<slug>.hf.space (embed the .hf.space URL).
 # Requires HUGGINGFACE_TOKEN unless DRY_RUN=1.
 
 : "${HF_OWNER:=shaggycamel}"
-: "${HF_IMAGE_BASENAME:=nba.shiny}"
+: "${HF_IMAGE_BASENAME:=scs.nba.fty.league_dash}"
 
 hf_space_id() {
-  echo "${HF_OWNER}/nba-shiny-${1}"
+  echo "${HF_OWNER}/scs-nba-fty-league-${1}"
 }
 
 adapter_url() {
-  echo "https://${HF_OWNER}-nba-shiny-${1}.hf.space"
+  echo "https://${HF_OWNER}-scs-nba-fty-league-${1}.hf.space"
 }
 
 # Create and configure the Space if needed. Idempotent: creates a missing Space,
@@ -21,7 +21,7 @@ adapter_provision() {
   local slug="$1"
   local image="$2"
   local app="${3:-nba.shiny.league}"
-  local name="nba-shiny-${slug}"
+  local name="scs-nba-fty-league-${slug}"
   local repo="${HF_OWNER}/${name}"
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
@@ -50,7 +50,8 @@ adapter_provision() {
   local df_body
   df_body="$(curl -s -H "Authorization: Bearer ${HUGGINGFACE_TOKEN}" \
     "https://huggingface.co/api/spaces/${repo}/raw/main/Dockerfile")"
-  if printf '%s' "$df_body" | grep -qF "library(${app})"; then
+  if printf '%s' "$df_body" | grep -qF "library(${app})" \
+     && printf '%s' "$df_body" | grep -qF "FROM ${image}"; then
     echo "[hf] ${repo} already configured"
     return 0
   fi

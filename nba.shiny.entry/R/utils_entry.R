@@ -205,7 +205,7 @@ get_league_competitors <- function(con, platform, league_id, season = entry_seas
 #'
 #' Derives the Hugging Face Space URL for a league container from the deploy
 #' naming convention, e.g. `espn-95537` under owner `shaggycamel` becomes
-#' `https://shaggycamel-nba-shiny-espn-95537.hf.space`.
+#' `https://shaggycamel-scs-nba-fty-league-espn-95537.hf.space`.
 #'
 #' @param platform,league_id League identity.
 #' @param owner,prefix Overridable via `NBA_HF_OWNER` / `NBA_HF_SPACE_PREFIX`.
@@ -215,7 +215,7 @@ league_space_url <- function(
   platform,
   league_id,
   owner = Sys.getenv("NBA_HF_OWNER", "shaggycamel"),
-  prefix = Sys.getenv("NBA_HF_SPACE_PREFIX", "nba-shiny")
+  prefix = Sys.getenv("NBA_HF_SPACE_PREFIX", "scs-nba-fty-league")
 ) {
   slug <- tolower(paste0(platform, "-", league_id))
   sprintf("https://%s-%s-%s.hf.space", owner, prefix, slug)

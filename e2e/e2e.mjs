@@ -8,11 +8,11 @@ import { fileURLToPath } from "url";
 //
 // Env:
 //   E2E_EMAIL, E2E_PASSWORD        (required) credentials for a test customer
-//   ENTRY_URL                      (default https://shaggycamel-nba-shiny-entry.hf.space/)
+//   ENTRY_URL                      (default https://shaggycamel-scs-nba-fty-league-entry.hf.space/)
 //   E2E_EXPECT_COMPETITORS         (optional) JSON map {"ESPN:<league_id>":"<competitor_id>"}
 //   E2E_HEADLESS                   (default "1"; set "0" to watch)
 
-const ENTRY = process.env.ENTRY_URL || "https://shaggycamel-nba-shiny-entry.hf.space/";
+const ENTRY = process.env.ENTRY_URL || "https://shaggycamel-scs-nba-fty-league-entry.hf.space/";
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 const EXPECTED = process.env.E2E_EXPECT_COMPETITORS
