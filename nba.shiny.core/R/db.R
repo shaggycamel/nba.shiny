@@ -7,13 +7,13 @@
 #'   `NBA_DB_SECTION` environment variable, or `"cockroach-read"`.
 #' @param file Path to the credentials INI. Defaults to the
 #'   `NBA_DB_CREDENTIALS` environment variable, or
-#'   `~/.config/sports-hub-credentials.ini`.
+#'   `~/.config/scs_hub_credentials.ini`.
 #'
 #' @return A `DBIConnection`.
 #' @export
 db_connect <- function(
   section = Sys.getenv("NBA_DB_SECTION", "cockroach-read"),
-  file = Sys.getenv("NBA_DB_CREDENTIALS", "~/.config/sports-hub-credentials.ini")
+  file = Sys.getenv("NBA_DB_CREDENTIALS", "~/.config/scs_hub_credentials.ini")
 ) {
   file <- path.expand(file)
   if (!file.exists(file)) {

@@ -26,7 +26,7 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 - **No host R/renv is needed.** All R steps (data generation, `R CMD build`, league
   listing) run inside the `nba.shiny_base:latest` image, which carries the restored
   library. (The host must have Docker; R is used via `docker run`.)
-- Credentials INI exists: `~/.config/sports-hub-credentials.ini` with a
+- Credentials INI exists: `~/.config/scs_hub_credentials.ini` with a
   `cockroach-read` section (and `postgres` for local). Generation defaults to
   `NBA_DB_SECTION=cockroach-read`. (No `psql` needed — leagues are listed via R in
   the base image.)
@@ -53,7 +53,7 @@ Preflight:
 cd ~/github/nba.shiny
 git pull                      # MUST be up to date; see §3
 docker info >/dev/null && echo docker-ok
-test -f ~/.config/sports-hub-credentials.ini && echo ini-ok
+test -f ~/.config/scs_hub_credentials.ini && echo ini-ok
 set -a; source ./.profile; set +a
 for v in DOCKERHUB_TOKEN HUGGINGFACE_TOKEN; do
   [ -n "${!v:-}" ] && echo "$v set" || echo "$v MISSING"
