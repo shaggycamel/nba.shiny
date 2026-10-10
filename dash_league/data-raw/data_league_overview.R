@@ -164,7 +164,7 @@ dfs_fty_standings <-
   filter(season == cur_season) |>
   as_tibble() |>
   filter(league_id %in% target_leagues) |>
-  mutate(across(c(ends_with("_id"), matchup), \(x) as.integer(x))) |>
+  mutate(across(c(ends_with("_id"), matchup, cat_won, cat_lost, cat_tied), \(x) as.integer(x))) |>
   left_join(
     dfs_fty_schedule |>
       list_rbind(names_to = "league_id") |>
@@ -216,8 +216,6 @@ dfs_fty_standings <-
     }
 
     df_standings |>
-      # bigint columns arrive as integer64; reactable needs plain numerics.
-      mutate(across(any_of(c("wins", "losses", "ties", "points_for", "points_against")), as.numeric)) |>
       mutate(pct = (wins + 0.5 * ties) / (wins + losses + ties)) |>
       arrange(desc(wins), losses, desc(pct)) |>
       mutate(rank = row_number()) |>
