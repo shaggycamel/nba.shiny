@@ -262,37 +262,37 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
 ## To be copied in the server
 # mod_league_overview_server("league_overview_1")
 
-library(shiny)
-library(bslib)
-library(shinyWidgets)
-library(plotly)
-library(stringr)
-library(purrr)
-library(dplyr)
-library(tidyr)
-library(reactable)
+# library(shiny)
+# library(bslib)
+# library(shinyWidgets)
+# library(plotly)
+# library(stringr)
+# library(purrr)
+# library(dplyr)
+# library(tidyr)
+# library(reactable)
 
-load("data/dfs_league_overview.rda")
-load("data/dfs_fty_recent_activity.rda")
-load("data/ls_lo_lg_cats.rda")
+# load("data/dfs_league_overview.rda")
+# load("data/dfs_fty_recent_activity.rda")
+# load("data/ls_lo_lg_cats.rda")
 
-source("R/utils_get_opponent.R")
+# source("R/utils_get_opponent.R")
 
-ui <- page_fluid(
-  mod_league_overview_ui("league_overview_1")
-)
+# ui <- page_fluid(
+#   mod_league_overview_ui("league_overview_1")
+# )
 
-server <- function(input, output, session) {
-  rv_carry_thru <- reactiveValues(
-    fty_parameters_met = TRUE,
-    platform = "ESPN",
-    league_id = 1382487116,
-    competitor_id = 6,
-    competitor_name = "britney_spears",
-    cur_matchup_period = 99
-  )
+# server <- function(input, output, session) {
+# rv_carry_thru <- reactiveValues(
+#   fty_parameters_met = TRUE,
+#   platform = "ESPN",
+#   league_id = 1382487116,
+#   competitor_id = 6,
+#   competitor_name = "britney_spears",
+#   cur_matchup_period = 99
+# )
 
-  mod_league_overview_server("league_overview_1", rv_carry_thru)
-}
+#   mod_league_overview_server("league_overview_1", rv_carry_thru)
+# }
 
-shinyApp(ui, server)
+# shinyApp(ui, server)
