@@ -27,7 +27,7 @@ mod_league_overview_ui <- function(id) {
           height = 600,
           nav_panel(
             "Standings",
-            shinycssloaders::withSpinner(reactableOutput(ns("tbl_new")), type = 1, color = "#133DEF")
+            shinycssloaders::withSpinner(reactableOutput(ns("standings_table")), type = 1, color = "#133DEF")
           ),
           nav_panel(
             "Category Trend",
@@ -38,7 +38,7 @@ mod_league_overview_ui <- function(id) {
           full_screen = TRUE,
           min_height = 200,
           max_height = 650,
-          shinycssloaders::withSpinner(reactableOutput(ns("tbl_recent_activity")), type = 1, color = "#133DEF")
+          shinycssloaders::withSpinner(reactableOutput(ns("recent_activity_table")), type = 1, color = "#133DEF")
         )
       )
     )
@@ -165,7 +165,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
       points_against = colDef(name = "PA", format = colFormat(digits = 1))
     )
 
-    output$tbl_new <- renderReactable({
+    output$standings_table <- renderReactable({
       req(df_standings())
       df <- df_standings()
 
@@ -176,21 +176,53 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         bordered = TRUE,
         style = list(border = "1px solid #000000"),
         highlight = TRUE,
-        defaultColDef = colDef(headerStyle = list(background = "#cce5ff"))
+        height = "100%",
+        defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
+        rowStyle = function(index) {
+          if (
+            input$fty_lg_ov_just_h2h &&
+              df$competitor_id[index] %in% c(rv_carry_thru$competitor_id, opponent()$id)
+          ) {
+            list(backgroundColor = "#ffef9dff", fontWeight = "bold")
+          }
+        },
+        details = \(ix) {
+          df_cat <- pluck(dfs_fty_standings_cats, as.character(rv_carry_thru$league_id)) |>
+            filter(competitor_id == df$competitor_id[ix])
+
+          tags$div(
+            style = "margin: 10px 0 20px 45px;",
+            reactable(
+              df_cat,
+              columns = list(
+                category = colDef(show = FALSE),
+                fmt_category = colDef(name = "Category"),
+                display_order = colDef(show = FALSE),
+                is_ratio = colDef(show = FALSE),
+                value = colDef(
+                  name = "Season Total",
+                  cell = \(value, index) {
+                    if (df_cat$is_ratio[index]) {
+                      scales::percent(value, accuracy = 0.1)
+                    } else {
+                      format(round(value, 1), nsmall = 0, big.mark = ",")
+                    }
+                  }
+                ),
+                rank = colDef(name = "Rank", width = 70)
+              ),
+              pagination = FALSE,
+              bordered = TRUE,
+              style = list(border = "1px solid #000000"),
+              highlight = TRUE,
+              defaultColDef = colDef(headerStyle = list(background = "#cce5ff"))
+            )
+          )
+        }
       )
     })
 
     # Table ------------------------------------------------------------------
-
-    # Table state
-    rv_tbl_sort_order <- reactiveVal()
-    observe({
-      rv_tbl_sort_order(getReactableState("league-overview-table", "sorted", session = session))
-    }) |>
-      bindEvent(
-        getReactableState("league-overview-table", "sorted", session = session),
-        ignoreNULL = FALSE
-      )
 
     # Column formatting
     col_fmt_recent_activity <- list(
@@ -201,7 +233,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         filterInput = \(values, name) {
           tags$select(
             onchange = sprintf(
-              "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+              "Reactable.setFilter('recent-activity-table', '%s', event.target.value || undefined)",
               name
             ),
             tags$option(value = "", ""),
@@ -216,7 +248,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         filterInput = \(values, name) {
           tags$select(
             onchange = sprintf(
-              "Reactable.setFilter('league-overview-table', '%s', event.target.value || undefined)",
+              "Reactable.setFilter('recent-activity-table', '%s', event.target.value || undefined)",
               name
             ),
             tags$option(value = "", ""),
@@ -233,11 +265,11 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
 
     # Table state
     rv_tbl_sort_order <- reactiveVal()
-    cur_tbl_sort_order <- reactive(getReactableState("tbl_recent_activity", "sorted", session = session))
+    cur_tbl_sort_order <- reactive(getReactableState("recent_activity_table", "sorted", session = session))
     observe(rv_tbl_sort_order(cur_tbl_sort_order())) |>
       bindEvent(cur_tbl_sort_order())
 
-    output$tbl_recent_activity <- renderReactable({
+    output$recent_activity_table <- renderReactable({
       req(df_tbl())
 
       reactable(
@@ -250,7 +282,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         defaultSorted = list(timestamp = "desc"),
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
         columns = col_fmt_recent_activity,
-        elementId = "league-overview-table"
+        elementId = "recent-activity-table"
       )
     })
   })

@@ -226,6 +226,69 @@ dfs_fty_standings <-
   deframe()
 
 
+# Season category totals -------------------------------------------------
+
+# Season-accumulated per-category totals and ranks, backing the standings
+# drill-down. Only the categories a league actually scores are kept. Ratio
+# categories (fg_pct/ft_pct) are rebuilt from their components so the season
+# value is a true ratio, not a sum of weekly percentages. Completed matchups
+# only, matching dfs_fty_standings.
+
+completed_matchups <-
+  dfs_fty_schedule |>
+  list_rbind(names_to = "league_id") |>
+  mutate(league_id = as.integer(league_id)) |>
+  filter(matchup_end < cur_date) |>
+  distinct(league_id, matchup_period) |>
+  rename(matchup = matchup_period)
+
+dfs_fty_standings_cats <-
+  map(set_names(target_leagues), \(l_id) {
+    df_bs <- df_fty_box_score |>
+      filter(league_id == l_id) |>
+      inner_join(filter(completed_matchups, league_id == l_id), by = join_by(league_id, matchup))
+
+    df_fty_cats |>
+      filter(league_id == l_id, category_role == "scored") |>
+      arrange(display_order) |>
+      (\(df_cats_lg) {
+        map(set_names(df_cats_lg$nba_category), \(cat) {
+          meta <- filter(df_cats_lg, nba_category == cat)
+
+          value <- if (is.na(meta$numerator)) {
+            summarise(df_bs, value = sum(.data[[cat]], na.rm = TRUE), .by = competitor_id)
+          } else {
+            summarise(
+              df_bs,
+              value = sum(.data[[meta$numerator]], na.rm = TRUE) / sum(.data[[meta$denominator]], na.rm = TRUE),
+              .by = competitor_id
+            )
+          }
+
+          value |>
+            mutate(
+              league_id = l_id,
+              category = cat,
+              fmt_category = meta$fmt_category,
+              display_order = meta$display_order,
+              is_ratio = meta$is_ratio,
+              higher_is_better = meta$higher_is_better
+            )
+        }) |>
+          list_rbind()
+      })()
+  }) |>
+  list_rbind() |>
+  mutate(
+    rank = if_else(higher_is_better, rank(-value), rank(value)),
+    .by = c(league_id, category)
+  ) |>
+  arrange(competitor_id, display_order) |>
+  nest_by(league_id) |>
+  mutate(data = map(data, select, competitor_id, category, fmt_category, display_order, is_ratio, value, rank)) |>
+  deframe()
+
+
 # Write data -------------------------------------------------------------
 
-usethis::use_data(dfs_league_overview, dfs_fty_standings, overwrite = TRUE)
+usethis::use_data(dfs_league_overview, dfs_fty_standings, dfs_fty_standings_cats, overwrite = TRUE)
