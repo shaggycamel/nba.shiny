@@ -34,8 +34,8 @@ if [ ! -t 1 ]; then
 fi
 
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
-IMAGE_NAME="nba.shiny"
-BASE_IMAGE="nba.shiny_base:latest"
+IMAGE_NAME="scs.nba.fty.league_dash"
+BASE_IMAGE="scs.nba.fty.league_dash_base:latest"
 TAG="${TAG:-latest}"
 SEASON="${NBA_SEASON:-2025-26}"
 EXCLUDE_LEAGUES="${EXCLUDE_LEAGUES:-}"

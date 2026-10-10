@@ -19,8 +19,8 @@ REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
 cd "$REPO_DIR" || exit 1
 
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"
-ENTRY_IMAGE="${ENTRY_IMAGE:-nba.shiny.entry}"
-BASE_IMAGE="nba.shiny_base:latest"
+ENTRY_IMAGE="${ENTRY_IMAGE:-scs.nba.fty.league_dash_entry}"
+BASE_IMAGE="scs.nba.fty.league_dash_base:latest"
 TAG="${TAG:-latest}"
 ENTRY_SLUG="${ENTRY_SLUG:-entry}"
 DRY_RUN="${DRY_RUN:-0}"

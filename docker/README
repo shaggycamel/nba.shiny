@@ -2,19 +2,19 @@
 
 # 1. Build the base image. cron.sh builds this automatically when it is missing;
 #    do it by hand only for debugging.
-docker build -f docker/Dockerfile_base --progress=plain -t nba.shiny_base:latest .
+docker build -f docker/Dockerfile_base --progress=plain -t scs.nba.fty.league_dash_base:latest .
 
 # 2. Build the app tarball (from inside the league package), then the app image.
 ( cd nba.shiny.league && R CMD build . )
-docker build -f docker/Dockerfile --progress=plain -t shaggycamel/nba.shiny:latest .
+docker build -f docker/Dockerfile --progress=plain -t shaggycamel/scs.nba.fty.league_dash:latest .
 
 # 3. Run it.
-docker run -p 3838:3838 shaggycamel/nba.shiny:latest
+docker run -p 3838:3838 shaggycamel/scs.nba.fty.league_dash:latest
 # then go to 127.0.0.1:3838
 
 # 4. Build and run the entry point image (nba.shiny.core comes from the base).
-docker build -f docker/Dockerfile_entry --progress=plain -t shaggycamel/nba.shiny.entry:latest .
-docker run -p 3839:3838 shaggycamel/nba.shiny.entry:latest
+docker build -f docker/Dockerfile_entry --progress=plain -t shaggycamel/scs.nba.fty.league_dash_entry:latest .
+docker run -p 3839:3838 shaggycamel/scs.nba.fty.league_dash_entry:latest
 # then go to 127.0.0.1:3839
 # Entry runtime config: NBA_DB_SECTION, NBA_HANDOFF_SECRET, NBA_SEASON,
 # NBA_HF_OWNER. Passwords live in fty.customer.password_hash (set one with
@@ -24,13 +24,13 @@ docker run -p 3839:3838 shaggycamel/nba.shiny.entry:latest
 # ── Nuc notes ────────────────────────────────────────────────────────────────
 # All Docker work runs on the nuc, not the mac. Verify end-to-end there:
 
-docker run -d -p 3838:3838 --name nba_test shaggycamel/nba.shiny:latest
+docker run -d -p 3838:3838 --name nba_test shaggycamel/scs.nba.fty.league_dash:latest
 docker ps                       # healthcheck should go healthy after start-period
 curl -f http://localhost:3838/  # expect HTTP 200
 docker logs nba_test
 docker rm -f nba_test
 
-# Then run cron.sh: it builds/reuses nba.shiny_base:latest, then builds/pushes
+# Then run cron.sh: it builds/reuses scs.nba.fty.league_dash_base:latest, then builds/pushes
 # one league image per active league and restarts each league's HF space.
 
 # Assumption to confirm on the nuc: the HuggingFace restart endpoint

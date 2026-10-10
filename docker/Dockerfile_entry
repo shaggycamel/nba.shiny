@@ -1,4 +1,4 @@
-FROM nba.shiny_base:latest
+FROM scs.nba.fty.league_dash_base:latest
 
 # The entry point app. nba.shiny.core is already installed in the base image.
 COPY nba.shiny.entry /tmp/nba.shiny.entry
