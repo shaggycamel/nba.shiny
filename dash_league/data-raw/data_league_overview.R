@@ -283,9 +283,10 @@ dfs_fty_standings_cats <-
     rank = if_else(higher_is_better, rank(-value), rank(value)),
     .by = c(league_id, category)
   ) |>
-  arrange(competitor_id, display_order) |>
-  nest_by(league_id) |>
-  mutate(data = map(data, select, competitor_id, category, fmt_category, display_order, is_ratio, value, rank)) |>
+  select(competitor_id, category, fmt_category, display_order, is_ratio, value, rank, league_id) |>
+  arrange(league_id, competitor_id, display_order) |>
+  group_by(league_id) |>
+  nest() |>
   deframe()
 
 
