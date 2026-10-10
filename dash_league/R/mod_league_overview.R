@@ -160,7 +160,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
       wins = colDef(name = "W", width = 55),
       losses = colDef(name = "L", width = 55),
       ties = colDef(name = "T", width = 55),
-      pct = colDef(name = "PCT", format = colFormat(digits = 3)),
+      pct = colDef(name = "PCT", format = colFormat(percent = TRUE, digits = 1)),
       points_for = colDef(name = "PF", format = colFormat(digits = 1)),
       points_against = colDef(name = "PA", format = colFormat(digits = 1))
     )
@@ -174,7 +174,7 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
         columns = col_fmt_standings[intersect(names(col_fmt_standings), names(df))],
         pagination = FALSE,
         bordered = TRUE,
-        style = list(border = "1px solid #000000"),
+        style = list(border = "1px solid #000000", margin = "0 2rem"),
         highlight = TRUE,
         height = "100%",
         defaultColDef = colDef(headerStyle = list(background = "#cce5ff")),
@@ -191,10 +191,11 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
             filter(competitor_id == df$competitor_id[ix])
 
           tags$div(
-            style = "margin: 10px 0 20px 45px;",
+            style = "margin: 10px auto 20px; max-width: 480px; padding: 0 1.5rem;",
             reactable(
               df_cat,
               columns = list(
+                competitor_id = colDef(show = FALSE),
                 category = colDef(show = FALSE),
                 fmt_category = colDef(name = "Category"),
                 display_order = colDef(show = FALSE),

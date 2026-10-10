@@ -44,7 +44,7 @@ app_ui <- function(request) {
          .modal-dialog:has(.login-fields) .modal-header .modal-title { color: #FFF; }
 
          /* Larger text in the password field. */
-         #password { font-size: 2rem; }"
+         #password { font-size: 1.3rem; }"
       )),
       tags$script(HTML(
         "window.addEventListener('message', function (e) {
@@ -81,7 +81,7 @@ login_modal <- function() {
     footer = tagList(
       actionButton(
         "login",
-        "Kobeee",
+        "Kobeee!",
         style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
       )
     ),
