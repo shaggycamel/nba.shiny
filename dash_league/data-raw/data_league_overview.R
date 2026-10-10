@@ -168,6 +168,7 @@ dfs_fty_standings <-
   left_join(
     dfs_fty_schedule |>
       list_rbind(names_to = "league_id") |>
+      mutate(league_id = as.integer(league_id)) |>
       distinct(league_id, matchup_period, matchup_end),
     by = join_by(league_id, matchup == matchup_period)
   ) |>
