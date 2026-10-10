@@ -151,6 +151,145 @@ dfs_league_overview <-
   deframe()
 
 
+# League standings -------------------------------------------------------
+
+# Standings are ranked differently per league type:
+#   H2H_CATEGORY        - by category record (every scored category is a W/L/T)
+#   H2H_MOST_CATEGORIES - by matchup record (most categories won that week)
+#   H2H_POINTS          - by matchup record (highest fantasy points that week)
+# Only completed matchups count, so an in-progress week is excluded.
+
+dfs_fty_standings <-
+  tbl(db_con, I("fty.matchup_result")) |>
+  filter(season == cur_season) |>
+  as_tibble() |>
+  filter(league_id %in% target_leagues) |>
+  mutate(across(c(ends_with("_id"), matchup, cat_won, cat_lost, cat_tied), \(x) as.integer(x))) |>
+  left_join(
+    dfs_fty_schedule |>
+      list_rbind(names_to = "league_id") |>
+      mutate(league_id = as.integer(league_id)) |>
+      distinct(league_id, matchup_period, matchup_end),
+    by = join_by(league_id, matchup == matchup_period)
+  ) |>
+  filter(matchup_end < cur_date) |>
+  left_join(
+    select(df_fty_base, league_id, competitor_id, competitor_name),
+    by = join_by(league_id, competitor_id)
+  ) |>
+  left_join(
+    distinct(df_fty_cats, league_id, scoring_type),
+    by = join_by(league_id)
+  ) |>
+  group_by(league_id) |>
+  group_modify(\(df_lg, ...) {
+    scoring_type <- unique(df_lg$scoring_type)
+
+    df_standings <- if (scoring_type == "H2H_CATEGORY") {
+      summarise(
+        df_lg,
+        wins = sum(cat_won, na.rm = TRUE),
+        losses = sum(cat_lost, na.rm = TRUE),
+        ties = sum(cat_tied, na.rm = TRUE),
+        .by = c(competitor_id, competitor_name)
+      )
+    } else if (scoring_type == "H2H_POINTS") {
+      summarise(
+        df_lg,
+        wins = sum(result == "W", na.rm = TRUE),
+        losses = sum(result == "L", na.rm = TRUE),
+        ties = sum(result == "T", na.rm = TRUE),
+        points_for = sum(score, na.rm = TRUE),
+        points_against = sum(opponent_score, na.rm = TRUE),
+        .by = c(competitor_id, competitor_name)
+      )
+    } else {
+      # H2H_MOST_CATEGORIES: matchups are won by category count, so
+      # points-for/against would not be meaningful and are left off.
+      summarise(
+        df_lg,
+        wins = sum(result == "W", na.rm = TRUE),
+        losses = sum(result == "L", na.rm = TRUE),
+        ties = sum(result == "T", na.rm = TRUE),
+        .by = c(competitor_id, competitor_name)
+      )
+    }
+
+    df_standings |>
+      mutate(pct = (wins + 0.5 * ties) / (wins + losses + ties)) |>
+      arrange(desc(wins), losses, desc(pct)) |>
+      mutate(rank = row_number()) |>
+      select(rank, competitor_id, competitor_name, wins, losses, ties, pct, any_of(c("points_for", "points_against")))
+  }) |>
+  ungroup() |>
+  nest_by(league_id) |>
+  deframe()
+
+
+# Season category totals -------------------------------------------------
+
+# Season-accumulated per-category totals and ranks, backing the standings
+# drill-down. Only the categories a league actually scores are kept. Ratio
+# categories (fg_pct/ft_pct) are rebuilt from their components so the season
+# value is a true ratio, not a sum of weekly percentages. Completed matchups
+# only, matching dfs_fty_standings.
+
+completed_matchups <-
+  dfs_fty_schedule |>
+  list_rbind(names_to = "league_id") |>
+  mutate(league_id = as.integer(league_id)) |>
+  filter(matchup_end < cur_date) |>
+  distinct(league_id, matchup_period) |>
+  rename(matchup = matchup_period)
+
+dfs_fty_standings_cats <-
+  map(set_names(target_leagues), \(l_id) {
+    df_bs <- df_fty_box_score |>
+      filter(league_id == l_id) |>
+      inner_join(filter(completed_matchups, league_id == l_id), by = join_by(league_id, matchup))
+
+    df_fty_cats |>
+      filter(league_id == l_id, category_role == "scored") |>
+      arrange(display_order) |>
+      (\(df_cats_lg) {
+        map(set_names(df_cats_lg$nba_category), \(cat) {
+          meta <- filter(df_cats_lg, nba_category == cat)
+
+          value <- if (is.na(meta$numerator)) {
+            summarise(df_bs, value = sum(.data[[cat]], na.rm = TRUE), .by = competitor_id)
+          } else {
+            summarise(
+              df_bs,
+              value = sum(.data[[meta$numerator]], na.rm = TRUE) / sum(.data[[meta$denominator]], na.rm = TRUE),
+              .by = competitor_id
+            )
+          }
+
+          value |>
+            mutate(
+              league_id = l_id,
+              category = cat,
+              fmt_category = meta$fmt_category,
+              display_order = meta$display_order,
+              is_ratio = meta$is_ratio,
+              higher_is_better = meta$higher_is_better
+            )
+        }) |>
+          list_rbind()
+      })()
+  }) |>
+  list_rbind() |>
+  mutate(
+    rank = if_else(higher_is_better, rank(-value), rank(value)),
+    .by = c(league_id, category)
+  ) |>
+  select(competitor_id, category, fmt_category, display_order, is_ratio, value, rank, league_id) |>
+  arrange(league_id, competitor_id, display_order) |>
+  group_by(league_id) |>
+  nest() |>
+  deframe()
+
+
 # Write data -------------------------------------------------------------
 
-usethis::use_data(dfs_league_overview, overwrite = TRUE)
+usethis::use_data(dfs_league_overview, dfs_fty_standings, dfs_fty_standings_cats, overwrite = TRUE)

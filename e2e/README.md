@@ -27,11 +27,13 @@ cd e2e
 npm install                       # playwright (set PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
                                   # if you'll use the installed Chrome channel)
 
-E2E_EMAIL='<test-customer-email>' \
-E2E_PASSWORD='<password>' \
+set -a; source ~/.config/scs_e2e.env; set +a   # E2E_EMAIL / E2E_PASSWORD live here, not in the repo
 E2E_EXPECT_COMPETITORS='{"ESPN:123456":"7"}' \
   npm test
 ```
+
+Credentials are kept in `~/.config/scs_e2e.env` (git-ignored, outside the repo);
+the harness sources that file and never prints the values.
 
 - Uses the installed **Google Chrome** (`channel: "chrome"`), so no Playwright
   browser download is required.

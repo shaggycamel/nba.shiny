@@ -16,7 +16,8 @@ app_ui <- function(request) {
          flex: 1 1 auto; min-height: 0;
          display: flex; flex-direction: column;
        }
-       .shiny-spinner-output-container > .r2d3 {
+       .shiny-spinner-output-container > .r2d3,
+       .shiny-spinner-output-container > .reactable {
          flex: 1 1 auto; min-height: 0;
        }"
     ))),

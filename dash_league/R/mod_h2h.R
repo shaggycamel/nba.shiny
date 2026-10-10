@@ -27,10 +27,17 @@ mod_h2h_ui <- function(id) {
       card(
         height = 1400,
         fill = FALSE,
-        card(full_screen = TRUE, height = 700,
-             shinycssloaders::withSpinner(d3Output(ns("stat_plot"), height = "100%"), type = 1, color = "#133DEF")),
-        card(full_screen = TRUE, min_height = 200, max_height = 650,
-             shinycssloaders::withSpinner(reactableOutput(ns("game_table")), type = 1, color = "#133DEF"))
+        card(
+          full_screen = TRUE,
+          height = 700,
+          shinycssloaders::withSpinner(d3Output(ns("stat_plot"), height = "100%"), type = 1, color = "#133DEF")
+        ),
+        card(
+          full_screen = TRUE,
+          min_height = 200,
+          max_height = 650,
+          shinycssloaders::withSpinner(reactableOutput(ns("game_table")), type = 1, color = "#133DEF")
+        )
       ),
       fillable = TRUE,
       tags$style(
@@ -253,7 +260,11 @@ mod_h2h_server <- function(
               div(
                 style = "display: flex; gap: 8px;",
                 modalButton("Cancel"),
-                actionButton(ns("confirm_snapshot_name"), "Kobeee", class = "btn-primary")
+                actionButton(
+                  ns("confirm_snapshot_name"),
+                  "Kobeee!",
+                  style = "color:#FFF; background-color:#337AB7; border-color:#2E6DA4"
+                )
               )
             )
           )
