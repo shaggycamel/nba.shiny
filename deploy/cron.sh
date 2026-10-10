@@ -1,21 +1,22 @@
 #!/bin/bash
 
-# Remember to chmod +x cron.sh on nuc after pulling latest file
+# Remember to chmod +x deploy/cron.sh on nuc after pulling latest file
 #
 # Single deploy entry point: build the base image, generate the shared NBA base,
 # then generate/build/deploy one container per league via the deploy adapter
 # (see deploy/adapter.sh). Data is customer-agnostic; the entry point maps
 # customers to leagues at runtime.
 #
-# Run this directly (cronjobs run `cron.sh`). The entry-point container is
+# Run this directly (cronjobs run `deploy/cron.sh`). The entry-point container is
 # deployed only when BUILD_ENTRY=1, since rebuilding it restarts the entry Space.
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 set -uo pipefail
 
-# Work from the repo root regardless of the invoking cwd
-REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
+# Work from the repo root regardless of the invoking cwd (this script lives in
+# deploy/, so the repo root is its parent directory)
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
 cd "$REPO_DIR" || exit 1
 
 # Deploy secrets (DOCKERHUB_TOKEN, HUGGINGFACE_TOKEN, ...). Resolved after the cd so
@@ -81,7 +82,7 @@ R_IMAGE="${R_IMAGE:-$BASE_IMAGE}"
 # config file on the host (dconf, systemd, Positron, ...). SCS_HUB_CREDENTIALS
 # still works as an override, matching what the R code itself resolves.
 CREDS_FILE="${CREDS_FILE:-${SCS_HUB_CREDENTIALS:-$HOME/.config/scs_hub_credentials.ini}}"
-PKG_DIR="${PKG_DIR:-league}"
+PKG_DIR="${PKG_DIR:-dash_league}"
 
 run_r() {
   # docker silently creates a *directory* at a missing bind path, which then shows
@@ -109,7 +110,7 @@ list_leagues() {
       printf 'ESPN,95537,\n'
       return 0
     fi
-    printf "✘ base image %s not found — build it first (cron.sh or REBUILD_BASE=1)\n" "$R_IMAGE" >&2
+    printf "✘ base image %s not found — build it first (deploy/cron.sh or REBUILD_BASE=1)\n" "$R_IMAGE" >&2
     return 1
   fi
   run_r Rscript ./data-raw/_list_leagues.R 2>/dev/null
@@ -207,7 +208,7 @@ done <<< "$LEAGUES"
 # ── Entry point (optional: only rebuild when its code changes) ────────────────
 if [ "$BUILD_ENTRY" = "1" ]; then
   step "Building/deploying entry point"
-  if bash "${REPO_DIR}/build_entry.sh"; then
+  if bash "${REPO_DIR}/deploy/build_entry.sh"; then
     printf "✔ entry point done\n"
   else
     printf "✘ entry point FAILED\n"

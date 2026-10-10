@@ -1,7 +1,7 @@
 FROM scs.nba.fty.league_dash_base:latest
 
 # The entry point app. core is already installed in the base image.
-COPY entry /tmp/entry
+COPY dash_entry /tmp/entry
 RUN R -e 'install.packages("/tmp/entry", repos = NULL, type = "source")' \
     && rm -rf /tmp/entry
 

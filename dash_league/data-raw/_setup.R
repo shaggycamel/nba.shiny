@@ -1,6 +1,6 @@
 # Shared generation setup ---------------------------------------------------
 # Packages required by the data-raw scripts. Sourced by both the base and league
-# layers so each can be run standalone (as cron.sh does).
+# layers so each can be run standalone (as deploy/cron.sh does).
 
 suppressPackageStartupMessages({
   library(DBI)

@@ -8,7 +8,7 @@ RUN R -e 'options(renv.config.pak.enabled = FALSE); renv::restore()'
 
 # Install app source from the freshly built tarball. Dependencies (including
 # core) are already present in the base image, so don't resolve them.
-COPY league/league_*.tar.gz /app.tar.gz
+COPY dash_league/league_*.tar.gz /app.tar.gz
 RUN R -e 'remotes::install_local("/app.tar.gz", upgrade = "never", dependencies = FALSE)' && rm /app.tar.gz
 
 # Use the production golem config (inst/golem-config.yml)

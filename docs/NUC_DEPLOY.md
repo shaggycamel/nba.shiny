@@ -9,16 +9,16 @@ Read this whole file before running anything. Prefer `DRY_RUN=1` first.
 
 ## 1. Context
 
-- Repo: `scs.nba.fty.league_dash` (monorepo; the league dashboard is the `league/`
+- Repo: `scs.nba.fty.league_dash` (monorepo; the league dashboard is the `dash_league/`
   package, which holds `data-raw/` and is built from its own directory).
-- Sibling packages: `core/` (shared theme/db/token/password) and
-  `entry/` (the **entry point**: auth → league picker → signed iframe).
+- Sibling packages: `dash_core/` (shared theme/db/token/password) and
+  `dash_entry/` (the **entry point**: auth → league picker → signed iframe).
 - Containers are built from Docker images and deployed as **one HF Space per league**
   plus a single **entry Space**. League containers bake their data at build time;
   the entry point reads customer/league data from CockroachDB at runtime.
-- Deploy logic lives in `cron.sh` (the single deploy entry point: base image +
-  leagues, plus the entry point when `BUILD_ENTRY=1`), `build_entry.sh` (entry
-  only), and `deploy/` (provider adapter; currently Hugging Face).
+- Deploy logic lives in `deploy/`: `cron.sh` (the single deploy entry point: base
+  image + leagues, plus the entry point when `BUILD_ENTRY=1`), `build_entry.sh`
+  (entry only), and the provider adapter (currently Hugging Face).
 
 ## 2. Prerequisites (verify before starting)
 
@@ -99,30 +99,30 @@ Run from the repo root. Source the tokens first, and always dry-run first.
 set -a; source ./.profile; set +a
 
 # 5.0 Dry run (no docker, no push, no deploy)
-DRY_RUN=1 PROVISION=1 bash cron.sh
+DRY_RUN=1 PROVISION=1 bash deploy/cron.sh
 
 # 5.1 Real run. PROVISION=1 creates any missing HF Spaces.
-PROVISION=1 bash cron.sh
+PROVISION=1 bash deploy/cron.sh
 
 # 5.2 Full run including the entry point (this restarts the entry Space).
-PROVISION=1 BUILD_ENTRY=1 bash cron.sh
+PROVISION=1 BUILD_ENTRY=1 bash deploy/cron.sh
 ```
 
-`cron.sh` does, in order:
+`deploy/cron.sh` does, in order:
 1. Base image `scs.nba.fty.league_dash_base:latest` (slow; skipped if it exists unless `REBUILD_BASE=1`)
    and verifies `core` loads in it.
 2. Generates the shared NBA base once, then per league generates data, builds the
    tarball, builds/pushes `shaggycamel/scs.nba.fty.league_dash-<slug>:latest`, and deploys.
    Failures are reported per league; the loop continues.
-3. `build_entry.sh` — builds/pushes/deploys `shaggycamel/scs.nba.fty.league_dash_entry:latest` —
+3. `deploy/build_entry.sh` — builds/pushes/deploys `shaggycamel/scs.nba.fty.league_dash_entry:latest` —
    only when `BUILD_ENTRY=1` (rebuilding restarts the entry Space).
 
 Individual stages (if you need to isolate a failure):
 
 ```bash
-REBUILD_BASE=1 bash cron.sh                 # force base rebuild
-BUILD_ENTRY=1 bash cron.sh                  # also rebuild/deploy the entry point
-PROVISION=1 bash build_entry.sh             # entry only
+REBUILD_BASE=1 bash deploy/cron.sh          # force base rebuild
+BUILD_ENTRY=1 bash deploy/cron.sh           # also rebuild/deploy the entry point
+PROVISION=1 bash deploy/build_entry.sh      # entry only
 ```
 
 ## 6. Configure the Spaces (after they exist)
@@ -204,7 +204,7 @@ dashboard should load inside the iframe, already scoped to that customer's manag
   `REBUILD_BASE=1`.
 - **"no leagues found"**: `fty.league` has no rows for `NBA_SEASON`, or the
   credentials INI section is wrong. Debug inside the base image:
-  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work/league scs.nba.fty.league_dash_base:latest Rscript ./data-raw/_list_leagues.R`
+  `docker run --rm -e NBA_SEASON=2025-26 -v "$HOME/.config:/root/.config:ro" -v "$PWD:/work" -w /work/dash_league scs.nba.fty.league_dash_base:latest Rscript ./data-raw/_list_leagues.R`
 - **HF restart returns non-2xx**: the Space does not exist (run with `PROVISION=1`)
   or `HUGGINGFACE_TOKEN` lacks write access.
 - **401/blank league dashboard**: `NBA_HANDOFF_SECRET` differs between entry and the

@@ -5,13 +5,13 @@
 .DS_Store
 
 # Data sources (the league tarball already carries data/)
-scs.nba.fty.league_dash.*/data/
-scs.nba.fty.league_dash.*/data-raw/
+dash_league/data/
+dash_league/data-raw/
 
 # Dev / tests / docs / host-only tooling not needed to build or run the images
-scs.nba.fty.league_dash.*/dev/
-scs.nba.fty.league_dash.*/tests/
-scs.nba.fty.league_dash.*/man/
+dash_league/dev/
+dash_league/tests/
+dash_league/man/
 docs/
 deploy/
 e2e/

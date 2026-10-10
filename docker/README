@@ -1,11 +1,11 @@
 # Run all commands from the repo root (build context = repo root).
 
-# 1. Build the base image. cron.sh builds this automatically when it is missing;
+# 1. Build the base image. deploy/cron.sh builds this automatically when it is missing;
 #    do it by hand only for debugging.
 docker build -f docker/Dockerfile_base --progress=plain -t scs.nba.fty.league_dash_base:latest .
 
 # 2. Build the app tarball (from inside the league package), then the app image.
-( cd league && R CMD build . )
+( cd dash_league && R CMD build . )
 docker build -f docker/Dockerfile --progress=plain -t shaggycamel/scs.nba.fty.league_dash:latest .
 
 # 3. Run it.
@@ -30,12 +30,12 @@ curl -f http://localhost:3838/  # expect HTTP 200
 docker logs nba_test
 docker rm -f nba_test
 
-# Then run cron.sh: it builds/reuses scs.nba.fty.league_dash_base:latest, then builds/pushes
+# Then run deploy/cron.sh: it builds/reuses scs.nba.fty.league_dash_base:latest, then builds/pushes
 # one league image per active league and restarts each league's HF space.
 
 # Assumption to confirm on the nuc: the HuggingFace restart endpoint
 #   POST https://huggingface.co/api/spaces/<repo>/restart?factory=true
-# cron.sh fails loudly if it returns a non-2xx status.
+# deploy/cron.sh fails loudly if it returns a non-2xx status.
 
 # ── Do not regenerate these files ────────────────────────────────────────────
 # docker/ is HAND-MAINTAINED and built from the repo root (context = repo root).

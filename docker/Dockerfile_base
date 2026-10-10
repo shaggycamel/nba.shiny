@@ -29,6 +29,6 @@ RUN --mount=type=cache,id=renv-cache,target=/root/.cache/R/renv \
     R -e 'renv::restore(prompt = FALSE)'
 
 # Shared package used by both the league dashboards and the entry point.
-COPY core /tmp/core
+COPY dash_core /tmp/core
 RUN R -e 'install.packages("/tmp/core", repos = NULL, type = "source")' \
     && rm -rf /tmp/core

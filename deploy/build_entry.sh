@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Remember to chmod +x build_entry.sh on nuc after pulling latest file
+# Remember to chmod +x deploy/build_entry.sh on nuc after pulling latest file
 #
 # Build and deploy the single entry-point container. The entry point reads
 # customer/league control data from the database at runtime, so it only needs
@@ -15,7 +15,7 @@ fi
 
 set -uo pipefail
 
-REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)}"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
 cd "$REPO_DIR" || exit 1
 
 DOCKERHUB_USER="${DOCKERHUB_USER:-shaggycamel}"

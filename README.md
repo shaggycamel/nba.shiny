@@ -13,12 +13,12 @@ packages plus the container/deploy pipeline.
 
 ## Repository layout
 
-- `league/` — the **league dashboard** package (the Shiny app).
-- `entry/` — the **entry point**: auth → league picker → signed iframe.
-- `core/` — shared theme, database access, password hashing and
+- `dash_league/` — the **league dashboard** package (the Shiny app).
+- `dash_entry/` — the **entry point**: auth → league picker → signed iframe.
+- `dash_core/` — shared theme, database access, password hashing and
   handoff tokens.
-- `docker/`, `deploy/`, `cron.sh`, `build_entry.sh` — container build and deploy
-  pipeline (`cron.sh` is the single deploy entry point).
+- `docker/`, `deploy/` — container build and deploy pipeline (`deploy/cron.sh` is
+  the single deploy entry point).
 - `e2e/` — browser end-to-end test (entry login → signed iframe → league).
 - `docs/` — deployment runbook.
 
@@ -26,7 +26,7 @@ packages plus the container/deploy pipeline.
 
 ```r
 renv::restore()
-devtools::load_all("league")
+devtools::load_all("dash_league")
 league::run_app()
 ```
 
@@ -38,9 +38,9 @@ Builds and deploys run from the repo root. See
 ## Tests
 
 ```r
-devtools::test("league")
-devtools::test("core")
-devtools::test("entry")
+devtools::test("dash_league")
+devtools::test("dash_core")
+devtools::test("dash_entry")
 ```
 
 Browser end-to-end (entry login → signed iframe → league dashboard) lives in
