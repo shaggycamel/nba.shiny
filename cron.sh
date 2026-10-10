@@ -67,10 +67,20 @@ build_base() {
 # ── Run R inside the base image (host needs only Docker, not R/renv) ──────────
 
 R_IMAGE="${R_IMAGE:-$BASE_IMAGE}"
-R_CREDS_DIR="${R_CREDS_DIR:-$HOME/.config}"
+# Credentials: mounted as a single file instead of the whole ~/.config. The
+# container needs only the ini, and a directory mount also handed it every other
+# config file on the host (dconf, systemd, Positron, ...). SCS_HUB_CREDENTIALS
+# still works as an override, matching what the R code itself resolves.
+CREDS_FILE="${CREDS_FILE:-${SCS_HUB_CREDENTIALS:-$HOME/.config/scs_hub_credentials.ini}}"
 PKG_DIR="${PKG_DIR:-nba.shiny.league}"
 
 run_r() {
+  # docker silently creates a *directory* at a missing bind path, which then shows
+  # up as a baffling R error, so check first.
+  if [ ! -f "$CREDS_FILE" ]; then
+    printf '✘ credentials file not found: %s\n' "$CREDS_FILE" >&2
+    return 1
+  fi
   docker run --rm \
     -e HOME=/root \
     -e RENV_CONFIG_AUTOLOADER_ENABLED=FALSE \
@@ -78,7 +88,7 @@ run_r() {
     -e NBA_SEASON="$SEASON" \
     -e LEAGUE_ID="${LEAGUE_ID:-}" \
     -v "${REPO_DIR}:/work" \
-    -v "${R_CREDS_DIR}:/root/.config:ro" \
+    -v "${CREDS_FILE}:/root/.config/scs_hub_credentials.ini:ro" \
     -w "/work/${PKG_DIR}" \
     "$R_IMAGE" "$@"
 }
