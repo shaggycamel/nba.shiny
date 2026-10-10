@@ -1,5 +1,5 @@
 ## usethis namespace: start
-#' @importFrom bslib bs_theme card layout_columns layout_sidebar nav_item nav_menu nav_panel nav_spacer page_navbar sidebar
+#' @importFrom bslib bs_theme card layout_columns layout_sidebar nav_item nav_menu nav_panel nav_spacer navset_card_tab page_navbar sidebar
 #' @importFrom config get
 #' @importFrom DBI dbConnect
 #' @importFrom dplyr across all_of anti_join arrange between bind_rows c_across case_when coalesce desc distinct filter inner_join if_else join_by left_join mutate percent_rank pull rename rowwise select slice slice_max summarise transmute ungroup

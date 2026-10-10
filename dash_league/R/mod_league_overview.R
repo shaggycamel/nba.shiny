@@ -22,10 +22,24 @@ mod_league_overview_ui <- function(id) {
       card(
         height = 1250,
         fill = FALSE,
-        card(full_screen = TRUE, height = 600,
-             shinycssloaders::withSpinner(r2d3::d3Output(ns("fty_lo_plt"), height = "100%"), type = 1, color = "#133DEF")),
-        card(full_screen = TRUE, min_height = 200, max_height = 650,
-             shinycssloaders::withSpinner(reactableOutput(ns("tbl_recent_activity")), type = 1, color = "#133DEF"))
+        navset_card_tab(
+          full_screen = TRUE,
+          height = 600,
+          nav_panel(
+            "Standings",
+            shinycssloaders::withSpinner(reactableOutput(ns("tbl_new")), type = 1, color = "#133DEF")
+          ),
+          nav_panel(
+            "Category Trend",
+            shinycssloaders::withSpinner(r2d3::d3Output(ns("fty_lo_plt"), height = "100%"), type = 1, color = "#133DEF")
+          )
+        ),
+        card(
+          full_screen = TRUE,
+          min_height = 200,
+          max_height = 650,
+          shinycssloaders::withSpinner(reactableOutput(ns("tbl_recent_activity")), type = 1, color = "#133DEF")
+        )
       )
     )
   )
@@ -131,6 +145,41 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
       )
     })
 
+    # Standings --------------------------------------------------------------
+
+    df_standings <- reactive({
+      req(rv_carry_thru$fty_parameters_met)
+      pluck(dfs_fty_standings, as.character(rv_carry_thru$league_id))
+    }) |>
+      bindEvent(rv_carry_thru$fty_parameters_met, rv_carry_thru$league_id)
+
+    col_fmt_standings <- list(
+      rank = colDef(name = "Rank", width = 60),
+      competitor_id = colDef(show = FALSE),
+      competitor_name = colDef(name = "Competitor"),
+      wins = colDef(name = "W", width = 55),
+      losses = colDef(name = "L", width = 55),
+      ties = colDef(name = "T", width = 55),
+      pct = colDef(name = "PCT", format = colFormat(digits = 3)),
+      points_for = colDef(name = "PF", format = colFormat(digits = 1)),
+      points_against = colDef(name = "PA", format = colFormat(digits = 1))
+    )
+
+    output$tbl_new <- renderReactable({
+      req(df_standings())
+      df <- df_standings()
+
+      reactable(
+        df,
+        columns = col_fmt_standings[intersect(names(col_fmt_standings), names(df))],
+        pagination = FALSE,
+        bordered = TRUE,
+        style = list(border = "1px solid #000000"),
+        highlight = TRUE,
+        defaultColDef = colDef(headerStyle = list(background = "#cce5ff"))
+      )
+    })
+
     # Table ------------------------------------------------------------------
 
     # Table state
@@ -213,37 +262,37 @@ mod_league_overview_server <- function(id, rv_carry_thru) {
 ## To be copied in the server
 # mod_league_overview_server("league_overview_1")
 
-# library(shiny)
-# library(bslib)
-# library(shinyWidgets)
-# library(plotly)
-# library(stringr)
-# library(purrr)
-# library(dplyr)
-# library(tidyr)
-# library(reactable)
+library(shiny)
+library(bslib)
+library(shinyWidgets)
+library(plotly)
+library(stringr)
+library(purrr)
+library(dplyr)
+library(tidyr)
+library(reactable)
 
-# load("data/dfs_league_overview.rda")
-# load("data/dfs_fty_recent_activity.rda")
-# load("data/ls_lo_lg_cats.rda")
+load("data/dfs_league_overview.rda")
+load("data/dfs_fty_recent_activity.rda")
+load("data/ls_lo_lg_cats.rda")
 
-# source("R/utils_get_opponent.R")
+source("R/utils_get_opponent.R")
 
-# ui <- page_fluid(
-#   mod_league_overview_ui("league_overview_1")
-# )
+ui <- page_fluid(
+  mod_league_overview_ui("league_overview_1")
+)
 
-# server <- function(input, output, session) {
-# rv_carry_thru <- reactiveValues(
-#   fty_parameters_met = TRUE,
-#   platform = "ESPN",
-#   league_id = 1382487116,
-#   competitor_id = 6,
-#   competitor_name = "britney_spears",
-#   cur_matchup_period = 99
-# )
+server <- function(input, output, session) {
+  rv_carry_thru <- reactiveValues(
+    fty_parameters_met = TRUE,
+    platform = "ESPN",
+    league_id = 1382487116,
+    competitor_id = 6,
+    competitor_name = "britney_spears",
+    cur_matchup_period = 99
+  )
 
-#   mod_league_overview_server("league_overview_1", rv_carry_thru)
-# }
+  mod_league_overview_server("league_overview_1", rv_carry_thru)
+}
 
-# shinyApp(ui, server)
+shinyApp(ui, server)

@@ -151,6 +151,80 @@ dfs_league_overview <-
   deframe()
 
 
+# League standings -------------------------------------------------------
+
+# Standings are ranked differently per league type:
+#   H2H_CATEGORY        - by category record (every scored category is a W/L/T)
+#   H2H_MOST_CATEGORIES - by matchup record (most categories won that week)
+#   H2H_POINTS          - by matchup record (highest fantasy points that week)
+# Only completed matchups count, so an in-progress week is excluded.
+
+dfs_fty_standings <-
+  tbl(db_con, I("fty.matchup_result")) |>
+  filter(season == cur_season) |>
+  as_tibble() |>
+  filter(league_id %in% target_leagues) |>
+  mutate(across(c(ends_with("_id"), matchup), \(x) as.integer(x))) |>
+  left_join(
+    dfs_fty_schedule |>
+      list_rbind(names_to = "league_id") |>
+      distinct(league_id, matchup_period, matchup_end),
+    by = join_by(league_id, matchup == matchup_period)
+  ) |>
+  filter(matchup_end < cur_date) |>
+  left_join(
+    select(df_fty_base, league_id, competitor_id, competitor_name),
+    by = join_by(league_id, competitor_id)
+  ) |>
+  left_join(
+    distinct(df_fty_cats, league_id, scoring_type),
+    by = join_by(league_id)
+  ) |>
+  group_by(league_id) |>
+  group_modify(\(df_lg, ...) {
+    scoring_type <- unique(df_lg$scoring_type)
+
+    df_standings <- if (scoring_type == "H2H_CATEGORY") {
+      summarise(
+        df_lg,
+        wins = sum(cat_won, na.rm = TRUE),
+        losses = sum(cat_lost, na.rm = TRUE),
+        ties = sum(cat_tied, na.rm = TRUE),
+        .by = c(competitor_id, competitor_name)
+      )
+    } else if (scoring_type == "H2H_POINTS") {
+      summarise(
+        df_lg,
+        wins = sum(result == "W", na.rm = TRUE),
+        losses = sum(result == "L", na.rm = TRUE),
+        ties = sum(result == "T", na.rm = TRUE),
+        points_for = sum(score, na.rm = TRUE),
+        points_against = sum(opponent_score, na.rm = TRUE),
+        .by = c(competitor_id, competitor_name)
+      )
+    } else {
+      # H2H_MOST_CATEGORIES: matchups are won by category count, so
+      # points-for/against would not be meaningful and are left off.
+      summarise(
+        df_lg,
+        wins = sum(result == "W", na.rm = TRUE),
+        losses = sum(result == "L", na.rm = TRUE),
+        ties = sum(result == "T", na.rm = TRUE),
+        .by = c(competitor_id, competitor_name)
+      )
+    }
+
+    df_standings |>
+      mutate(pct = (wins + 0.5 * ties) / (wins + losses + ties)) |>
+      arrange(desc(wins), losses, desc(pct)) |>
+      mutate(rank = row_number()) |>
+      select(rank, competitor_id, competitor_name, wins, losses, ties, pct, any_of(c("points_for", "points_against")))
+  }) |>
+  ungroup() |>
+  nest_by(league_id) |>
+  deframe()
+
+
 # Write data -------------------------------------------------------------
 
-usethis::use_data(dfs_league_overview, overwrite = TRUE)
+usethis::use_data(dfs_league_overview, dfs_fty_standings, overwrite = TRUE)
